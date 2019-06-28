@@ -1,0 +1,43 @@
+<ElectrodeWidget>:
+    canvas:
+        # Base color
+        Color:
+            rgb: self.led_value
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        # Transparent overlay
+        Color:
+            rgba: 1, 1, 1, self.overlay_alpha
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        # Borderline
+        Color:
+            rgba: 1, 1, 1, 0.2
+        Line:
+            points: self.x, self.y, self.x, self.y + self.height
+            width: 1
+    on_value: self.overlay_alpha=0.5 if self.value != 0 else 0.0
+BoxLayout:
+    orientation: 'vertical'
+    BoxLayout:
+    	orientation: 'horizontal'
+        id: top_bar
+        size_hint: (1, 0.2)
+        canvas:
+            Color:
+                rgba: 1, 1, 1, 1
+            Line:
+                # take account of the line width
+                points: self.x, self.y+2, self.x + self.width, self.y+2
+                width: 2.0
+        Label:
+        	id: top_hud
+        	report_enabled: False
+        	on_report_enabled: self.text = ' '.join(('Report:', 'Enabled' if self.report_enabled else 'Disabled'))
+        	text: 'Report: Disabled'
+    SliderWidgetLayout:
+        id: slider_root
+        electrodes: 32
+        size_hint: (1, 0.8)
