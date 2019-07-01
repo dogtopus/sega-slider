@@ -1,2 +1,10 @@
 [emu15275]
+; Serial port to use
 port = /dev/ttyUSB0
+
+; Slider mode. Changes both layout and the returned data of hardware info command (diva, chu) (default: diva)
+mode = diva
+; Override the layout (auto, diva, chu) (default: auto)
+layout = auto
+; Override hwinfo return value (auto, diva, chu) (default: auto)
+hwinfo = auto
