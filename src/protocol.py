@@ -12,19 +12,20 @@ import threading
 # Hardcoding this for now
 HW_INFO = b'15275   \xa006687\xff\x90\x00d'
 
-class Command15275(enum.IntEnum):
-    slider_report = 0x01
+class SliderCommand(enum.IntEnum):
+    input_report = 0x01
     led_report = 0x02
     enable_slider_report = 0x03
+    unk_0x04 = 0x04
     unk_0x09 = 0x09
     unk_0x0a = 0x0a
     ping = 0x10
     exception = 0xee
     get_hw_info = 0xf0
 
-class Serial15275(object):
+class SliderDevice(object):
     def __init__(self, port):
-        self._logger = logging.getLogger('Serial15275')
+        self._logger = logging.getLogger('SliderDevice')
         self.ser = serial.Serial(port, 115200)
         self.ser.timeout = 0.1
         self.ser_lock = threading.Lock()
@@ -40,13 +41,13 @@ class Serial15275(object):
         self.rx_len_hint = 1
         self._halt = threading.Event()
         self._dispatch = {
-            # slider_report should be periodical input report only
-            Command15275.led_report: self.handle_led_report,
-            Command15275.enable_slider_report: self.handle_enable_slider_report,
-            Command15275.unk_0x09: self.handle_empty_response,
-            Command15275.unk_0x0a: self.handle_empty_response,
-            Command15275.ping: self.handle_empty_response,
-            Command15275.get_hw_info: self.handle_get_hw_info,
+            # input_report should be periodical input report only
+            SliderCommand.led_report: self.handle_led_report,
+            SliderCommand.enable_slider_report: self.handle_enable_slider_report,
+            SliderCommand.unk_0x09: self.handle_empty_response,
+            SliderCommand.unk_0x0a: self.handle_empty_response,
+            SliderCommand.ping: self.handle_empty_response,
+            SliderCommand.get_hw_info: self.handle_get_hw_info,
         }
 
     def handle_led_report(self, cmd, args):
@@ -64,7 +65,7 @@ class Serial15275(object):
         self.send_cmd(cmd, args)
 
     def handle_empty_response(self, cmd, args):
-        if cmd == Command15275.ping:
+        if cmd == SliderCommand.ping:
             self._logger.info('Pong!')
         self.send_cmd(cmd)
 
@@ -72,11 +73,11 @@ class Serial15275(object):
         self.send_cmd(cmd, HW_INFO)
 
     def send_input_report(self, report):
-        self.send_cmd(Command15275.slider_report, report)
+        self.send_cmd(SliderCommand.input_report, report)
         self.ser.flush()
 
     def send_exception(self, body):
-        self.send_cmd(Command15275.exception, body)
+        self.send_cmd(SliderCommand.exception, body)
 
     def send_cmd(self, cmd, args=None):
         self.cksumctx_tx.reset()
@@ -177,7 +178,8 @@ class Serial15275(object):
         self._logger.info('Closing serial port')
         self.ser.close()
 
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    proto = Serial15275('/dev/ttyUSB0')
+    proto = SliderDevice('/dev/ttyUSB0')
     proto.run_serial_event_handler()

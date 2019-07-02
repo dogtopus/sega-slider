@@ -80,34 +80,35 @@ class Emu15275App(App):
     def build(self):
         self._config = ConfigParser('emu15275')
         self._config.read('emu15275.ini')
-        self._slider_protocol = protocol.Serial15275(self._config.get('emu15275', 'port'))
+        self._slider_protocol = protocol.SliderDevice(self._config.get('emu15275', 'port'))
 
     def on_tick(self, dt):
-        slider_widget = self.root.ids['slider_root']
-        hud = self.root.ids['top_hud']
-        # populating the report
-        report = bytearray(slider_widget.electrodes)
+        if self._slider_protocol is not None:
+            slider_widget = self.root.ids['slider_root']
+            hud = self.root.ids['top_hud']
+            # populating the report
+            report = bytearray(slider_widget.electrodes)
 
-        try:
-            led_report = self._slider_protocol.ledqueue.get_nowait()
-        except queue.Empty:
-            Logger.debug('LED report queue underrun')
-            led_report = None
+            try:
+                led_report = self._slider_protocol.ledqueue.get_nowait()
+            except queue.Empty:
+                Logger.debug('LED report queue underrun')
+                led_report = None
 
-        for w in slider_widget.children:
-            if isinstance(w, ElectrodeWidget):
-                report[w.electrode_index] = w.value
-                if led_report is not None and len(led_report['led_brg']) >= (w.electrode_index + 1) * 3:
-                    w.led_value[0] = led_report['led_brg'][(w.electrode_index * 3) + 1]
-                    w.led_value[1] = led_report['led_brg'][(w.electrode_index * 3) + 2]
-                    w.led_value[2] = led_report['led_brg'][(w.electrode_index * 3) + 0]
-        try:
-            if self._slider_protocol.input_report_enable.is_set():
-                self._slider_protocol.inputqueue.put_nowait(report)
-                if not hud.report_enabled:
-                    hud.report_enabled = True
-        except queue.Full:
-            Logger.warning('Input report queue overrun')
+            for w in slider_widget.children:
+                if isinstance(w, ElectrodeWidget):
+                    report[w.electrode_index] = w.value
+                    if led_report is not None and len(led_report['led_brg']) >= (w.electrode_index + 1) * 3:
+                        w.led_value[0] = led_report['led_brg'][(w.electrode_index * 3) + 1]
+                        w.led_value[1] = led_report['led_brg'][(w.electrode_index * 3) + 2]
+                        w.led_value[2] = led_report['led_brg'][(w.electrode_index * 3) + 0]
+            try:
+                if self._slider_protocol.input_report_enable.is_set():
+                    self._slider_protocol.inputqueue.put_nowait(report)
+                    if not hud.report_enabled:
+                        hud.report_enabled = True
+            except queue.Full:
+                Logger.warning('Input report queue overrun')
 
     def on_start(self):
         # Start the serial/frontend event handler
