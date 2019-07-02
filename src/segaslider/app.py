@@ -6,8 +6,6 @@ from kivy.logger import Logger
 logging.Logger.manager.root = Logger
 
 import os
-import kivy.resources as kvres
-kvres.resource_add_path(os.path.dirname(os.path.abspath(__file__)))
 
 # Usual kivy stuff
 from kivy.app import App
@@ -16,6 +14,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors.button import ButtonBehavior
 from kivy.clock import Clock
 import kivy.properties as kvprops
+import kivy.resources as kvres
 
 # For exception handling
 import queue
@@ -82,6 +81,8 @@ class SliderWidgetLayout(BoxLayout):
 
 class SegaSliderApp(App):
     def build(self):
+        # Register the app directory as a resource directory
+        kvres.resource_add_path(self.directory)
         self._slider_protocol = None
 
     def build_config(self, config):
@@ -96,6 +97,9 @@ class SegaSliderApp(App):
     def build_settings(self, settings):
         super().build_settings(settings)
         settings.add_json_panel('segaslider', self.config, kvres.resource_find('segaslider.settings.json'))
+
+    def get_application_config(self):
+        return os.path.join(self.user_data_dir, '{}.ini'.format(self.name))
 
     def on_config_change(self, config, section, key, value):
         super().on_config_change(config, section, key, value)
@@ -153,7 +157,7 @@ class SegaSliderApp(App):
 
     def on_start(self):
         self.reset_protocol_handler()
-
+        Logger.info(self.user_data_dir)
         try:
             # Put other initialization code here
             Clock.schedule_interval(self.on_tick, 12/1000)
