@@ -103,10 +103,13 @@ class SegaSliderApp(App):
 
     def on_config_change(self, config, section, key, value):
         super().on_config_change(config, section, key, value)
-        if section == 'segaslider' and key == 'port':
-            Logger.info('Serial port changed, reloading.')
-            self.reset_protocol_handler()
-        # TODO handler for layout changing
+        if section == 'segaslider':
+            if key in ('port', 'mode', 'hwinfo',):
+                Logger.info('Serial port settings changed, restarting handler.')
+                self.reset_protocol_handler()
+            # TODO handler for layout changing
+            if key in ('mode', 'layout',):
+                Logger.info('Layout settings changed.')
 
     def reset_protocol_handler(self):
         # Start the serial/frontend event handler
@@ -116,7 +119,10 @@ class SegaSliderApp(App):
             report_status = self.root.ids['top_hud_report_status']
             report_status.report_enabled = False
         try:
-            self._slider_protocol = protocol.SliderDevice(self.config.get('segaslider', 'port'))
+            default_mode = self.config.get('segaslider', 'mode')
+            potential_override = self.config.get('segaslider', 'hwinfo')
+            mode = default_mode if potential_override == 'auto' else potential_override
+            self._slider_protocol = protocol.SliderDevice(self.config.get('segaslider', 'port'), mode=mode)
             self._slider_protocol.start()
         except serial.serialutil.SerialException:
             Logger.exception('Failed to connect to serial port')

@@ -6,12 +6,36 @@ import queue
 import enum
 import logging
 import threading
+import struct
+from collections import namedtuple
 
 from .helper import e0d0
 from .helper import checksum
 
-# Hardcoding this for now
-HW_INFO = b'15275   \xa006687\xff\x90\x00d'
+SliderHardwareInfo = namedtuple('SliderHardwareInfo',
+                                ('model', 'device_class', 'fw_type', 'unk_0xe', 'fw_ver', 'unk_0x10', 'unk_0x11',))
+_hwinfo_packer = struct.Struct('<8sB5s4B')
+
+HW_INFO = dict(
+    diva=_hwinfo_packer.pack(*SliderHardwareInfo(
+        model=b'15275   ',
+        device_class=0xa0,
+        fw_type=b'06687',
+        unk_0xe=0xff,
+        fw_ver=0x90,
+        unk_0x10=0x00,
+        unk_0x11=0x64
+    )),
+    chu=_hwinfo_packer.pack(*SliderHardwareInfo(
+        model=b'15330   ',
+        device_class=0xa0,
+        fw_type=b'06712',
+        unk_0xe=0xff,
+        fw_ver=0x90,
+        unk_0x10=0x00,
+        unk_0x11=0x64
+    )),
+)
 
 class SliderCommand(enum.IntEnum):
     input_report = 0x01
@@ -25,8 +49,9 @@ class SliderCommand(enum.IntEnum):
     get_hw_info = 0xf0
 
 class SliderDevice(object):
-    def __init__(self, port):
+    def __init__(self, port, mode='diva'):
         self._logger = logging.getLogger('SliderDevice')
+        self._mode = mode
         self.ser = serial.Serial(port, 115200)
         self.ser.timeout = 0.1
         self.ser_lock = threading.Lock()
@@ -45,11 +70,19 @@ class SliderDevice(object):
             # input_report should be periodical input report only
             SliderCommand.led_report: self.handle_led_report,
             SliderCommand.enable_slider_report: self.handle_enable_slider_report,
-            SliderCommand.unk_0x09: self.handle_empty_response,
-            SliderCommand.unk_0x0a: self.handle_empty_response,
             SliderCommand.ping: self.handle_empty_response,
             SliderCommand.get_hw_info: self.handle_get_hw_info,
         }
+        if self._mode == 'chu':
+            self._dispatch.update({
+                # TODO figure out what to return
+                SliderCommand.unk_0x04: self.handle_empty_response,
+            })
+        elif self._mode == 'diva':
+            self._dispatch.update({
+                SliderCommand.unk_0x09: self.handle_empty_response,
+                SliderCommand.unk_0x0a: self.handle_empty_response,
+            })
 
     def handle_led_report(self, cmd, args):
         self._logger.debug('new led report')
@@ -71,7 +104,7 @@ class SliderDevice(object):
         self.send_cmd(cmd)
 
     def handle_get_hw_info(self, cmd, args):
-        self.send_cmd(cmd, HW_INFO)
+        self.send_cmd(cmd, HW_INFO[self._mode])
 
     def send_input_report(self, report):
         self.send_cmd(SliderCommand.input_report, report)
