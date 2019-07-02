@@ -76,4 +76,4 @@ local.properties
 
 # End of https://www.gitignore.io/api/pydev,eclipse
 
-src/emu15275.ini
+src/*.ini

@@ -76,13 +76,13 @@ class SliderWidgetLayout(BoxLayout):
         for i in range(self.electrodes):
             self.add_widget(ElectrodeWidget(electrode_index=i))
 
-class Emu15275App(App):
+class SegaSliderApp(App):
     def build(self):
         self._slider_protocol = None
 
     def build_config(self, config):
         super().build_config(config)
-        config.setdefaults('emu15275', dict(
+        config.setdefaults('segaslider', dict(
             port='/dev/ttyUSB0',
             mode='diva',
             layout='auto',
@@ -91,11 +91,11 @@ class Emu15275App(App):
 
     def build_settings(self, settings):
         super().build_settings(settings)
-        settings.add_json_panel('emu15275', self.config, 'emu15275.settings.json')
+        settings.add_json_panel('segaslider', self.config, 'segaslider.settings.json')
 
     def on_config_change(self, config, section, key, value):
         super().on_config_change(config, section, key, value)
-        if section == 'emu15275' and key == 'port':
+        if section == 'segaslider' and key == 'port':
             Logger.info('Serial port changed, reloading.')
             self.reset_protocol_handler()
         # TODO handler for layout changing
@@ -108,7 +108,7 @@ class Emu15275App(App):
             report_status = self.root.ids['top_hud_report_status']
             report_status.report_enabled = False
         try:
-            self._slider_protocol = protocol.SliderDevice(self.config.get('emu15275', 'port'))
+            self._slider_protocol = protocol.SliderDevice(self.config.get('segaslider', 'port'))
             self._slider_protocol.start()
         except serial.serialutil.SerialException:
             Logger.exception('Failed to connect to serial port')
@@ -165,4 +165,4 @@ class Emu15275App(App):
         Logger.info('Will now exit')
 
 if __name__ == '__main__':
-    Emu15275App().run()
+    SegaSliderApp().run()
