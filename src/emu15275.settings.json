@@ -1,0 +1,52 @@
+[
+    {
+        "type": "title",
+        "title": "Serial port"
+    },
+    {
+        "type": "string",
+        "section": "emu15275",
+        "key": "port",
+        "title": "Port name",
+        "desc": "Serial port to use."
+    },
+    {
+        "type": "title",
+        "title": "Emulation"
+    },
+    {
+        "type": "options",
+        "section": "emu15275",
+        "key": "mode",
+        "title": "Slider mode",
+        "desc": "Changes both layout and the returned data of hardware info command. (default: diva)",
+        "options": [
+            "diva",
+            "chu"
+        ]
+    },
+    {
+        "type": "options",
+        "section": "emu15275",
+        "key": "layout",
+        "title": "Override layout",
+        "desc": "Override the layout. (default: auto)",
+        "options": [
+            "auto",
+            "diva",
+            "chu"
+        ]
+    },
+    {
+        "type": "options",
+        "section": "emu15275",
+        "key": "hwinfo",
+        "title": "Override layout",
+        "desc": "Override hwinfo return value. (default: auto)",
+        "options": [
+            "auto",
+            "diva",
+            "chu"
+        ]
+    }
+]

@@ -11,11 +11,11 @@ from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.behaviors.button import ButtonBehavior
 from kivy.clock import Clock
-from kivy.config import ConfigParser
 import kivy.properties as kvprops
 
 # For exception handling
 import queue
+import serial
 
 import protocol
 
@@ -78,14 +78,48 @@ class SliderWidgetLayout(BoxLayout):
 
 class Emu15275App(App):
     def build(self):
-        self._config = ConfigParser('emu15275')
-        self._config.read('emu15275.ini')
-        self._slider_protocol = protocol.SliderDevice(self._config.get('emu15275', 'port'))
+        self._slider_protocol = None
+
+    def build_config(self, config):
+        super().build_config(config)
+        config.setdefaults('emu15275', dict(
+            port='/dev/ttyUSB0',
+            mode='diva',
+            layout='auto',
+            hwinfo='auto',
+        ))
+
+    def build_settings(self, settings):
+        super().build_settings(settings)
+        settings.add_json_panel('emu15275', self.config, 'emu15275.settings.json')
+
+    def on_config_change(self, config, section, key, value):
+        super().on_config_change(config, section, key, value)
+        if section == 'emu15275' and key == 'port':
+            Logger.info('Serial port changed, reloading.')
+            self.reset_protocol_handler()
+        # TODO handler for layout changing
+
+    def reset_protocol_handler(self):
+        # Start the serial/frontend event handler
+        if self._slider_protocol is not None:
+            self._slider_protocol.halt()
+            self._slider_protocol = None
+            report_status = self.root.ids['top_hud_report_status']
+            report_status.report_enabled = False
+        try:
+            self._slider_protocol = protocol.SliderDevice(self.config.get('emu15275', 'port'))
+            self._slider_protocol.start()
+        except serial.serialutil.SerialException:
+            Logger.exception('Failed to connect to serial port')
 
     def on_tick(self, dt):
+        serial_status = self.root.ids['top_hud_serial_status']
         if self._slider_protocol is not None:
+            if not serial_status.serial_connected:
+                serial_status.serial_connected = True
             slider_widget = self.root.ids['slider_root']
-            hud = self.root.ids['top_hud']
+            hud = self.root.ids['top_hud_report_status']
             # populating the report
             report = bytearray(slider_widget.electrodes)
 
@@ -109,10 +143,13 @@ class Emu15275App(App):
                         hud.report_enabled = True
             except queue.Full:
                 Logger.warning('Input report queue overrun')
+        else:
+            if serial_status.serial_connected:
+                serial_status.serial_connected = False
 
     def on_start(self):
-        # Start the serial/frontend event handler
-        self._slider_protocol.start()
+        self.reset_protocol_handler()
+
         try:
             # Put other initialization code here
             Clock.schedule_interval(self.on_tick, 12/1000)
@@ -123,7 +160,8 @@ class Emu15275App(App):
             raise
 
     def on_stop(self):
-        self._slider_protocol.halt()
+        if self._slider_protocol is not None:
+            self._slider_protocol.halt()
         Logger.info('Will now exit')
 
 if __name__ == '__main__':
