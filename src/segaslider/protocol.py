@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-import e0d0
-import checksum
 import io
 import serial
 import queue
 import enum
 import logging
 import threading
+
+from .helper import e0d0
+from .helper import checksum
 
 # Hardcoding this for now
 HW_INFO = b'15275   \xa006687\xff\x90\x00d'

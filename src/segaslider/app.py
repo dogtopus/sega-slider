@@ -5,6 +5,10 @@ import logging
 from kivy.logger import Logger
 logging.Logger.manager.root = Logger
 
+import os
+import kivy.resources as kvres
+kvres.resource_add_path(os.path.dirname(os.path.abspath(__file__)))
+
 # Usual kivy stuff
 from kivy.app import App
 from kivy.uix.widget import Widget
@@ -17,7 +21,7 @@ import kivy.properties as kvprops
 import queue
 import serial
 
-import protocol
+from . import protocol
 
 class ElectrodeWidget(ButtonBehavior, Widget):
     electrode_index = kvprops.NumericProperty(0)  # @UndefinedVariable
@@ -91,7 +95,7 @@ class SegaSliderApp(App):
 
     def build_settings(self, settings):
         super().build_settings(settings)
-        settings.add_json_panel('segaslider', self.config, 'segaslider.settings.json')
+        settings.add_json_panel('segaslider', self.config, kvres.resource_find('segaslider.settings.json'))
 
     def on_config_change(self, config, section, key, value):
         super().on_config_change(config, section, key, value)

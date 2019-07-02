@@ -202,4 +202,4 @@ dmypy.json
 
 # End of https://www.gitignore.io/api/pydev,python,eclipse
 
-src/*.ini
+src/segaslider/*.ini
