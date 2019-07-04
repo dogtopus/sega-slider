@@ -3,8 +3,6 @@
 # Forward all log entries from logging to kivy logger.
 import logging
 from kivy.logger import Logger
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
 logging.Logger.manager.root = Logger
 
 import os
@@ -14,6 +12,8 @@ import weakref
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.behaviors.button import ButtonBehavior
 from kivy.clock import Clock
 import kivy.properties as kvprops
