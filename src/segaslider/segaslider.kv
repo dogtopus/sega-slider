@@ -1,3 +1,5 @@
+#:kivy 1.10.0
+
 <LEDWidget>:
     canvas:
         # Base color
@@ -26,7 +28,8 @@ BoxLayout:
     BoxLayout:
     	orientation: 'horizontal'
         id: top_bar
-        size_hint: (1, 0.2)
+        size_hint: (1, 0.1)
+        size_hint_min_y: 50
         canvas:
             Color:
                 rgba: 1, 1, 1, 1

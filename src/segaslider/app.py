@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+from kivy import require as kvrequire
+kvrequire('1.10.0')
+
 # Forward all log entries from logging to kivy logger.
 import logging
 from kivy.logger import Logger
