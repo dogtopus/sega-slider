@@ -1,4 +1,4 @@
-<ElectrodeWidget>:
+<LEDWidget>:
     canvas:
         # Base color
         Color:
@@ -6,6 +6,8 @@
         Rectangle:
             pos: self.pos
             size: self.size
+<ElectrodeWidget>:
+    canvas:
         # Transparent overlay
         Color:
             rgba: 1, 1, 1, self.overlay_alpha

@@ -19,7 +19,7 @@
         "section": "segaslider",
         "key": "mode",
         "title": "Slider mode",
-        "desc": "Changes both layout and the returned data of hardware info command. (default: diva)",
+        "desc": "Change both layout and hwinfo data. (default: diva)",
         "options": [
             "diva",
             "chu"
@@ -41,8 +41,8 @@
         "type": "options",
         "section": "segaslider",
         "key": "hwinfo",
-        "title": "Override layout",
-        "desc": "Override hwinfo return value. (default: auto)",
+        "title": "Override hwinfo",
+        "desc": "Override returned hwinfo. (default: auto)",
         "options": [
             "auto",
             "diva",

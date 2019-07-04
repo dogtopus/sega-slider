@@ -3,9 +3,12 @@
 # Forward all log entries from logging to kivy logger.
 import logging
 from kivy.logger import Logger
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.gridlayout import GridLayout
 logging.Logger.manager.root = Logger
 
 import os
+import weakref
 
 # Usual kivy stuff
 from kivy.app import App
@@ -22,10 +25,14 @@ import serial
 
 from . import protocol
 
+class LEDWidget(Widget):
+    led_index = kvprops.NumericProperty(0)  # @UndefinedVariable
+    led_value = kvprops.ListProperty([0, 0, 0])  # @UndefinedVariable
+
 class ElectrodeWidget(ButtonBehavior, Widget):
     electrode_index = kvprops.NumericProperty(0)  # @UndefinedVariable
     value = kvprops.NumericProperty(0)  # @UndefinedVariable
-    led_value = kvprops.ListProperty([0, 0, 0])  # @UndefinedVariable
+    #led_value = kvprops.ListProperty([0, 0, 0])  # @UndefinedVariable
     overlay_alpha = kvprops.NumericProperty(0.0)  # @UndefinedVariable
 
 #     def _collide_plus(self, touch):
@@ -67,17 +74,52 @@ class ElectrodeWidget(ButtonBehavior, Widget):
             touch.grab(self)
             self.value = 0xfe
 
-class SliderWidgetLayout(BoxLayout):
+class SliderWidgetLayout(FloatLayout):
     electrodes = kvprops.NumericProperty(32)  # @UndefinedVariable
+    slider_layout = kvprops.OptionProperty('diva', options=['diva', 'chu'])  # @UndefinedVariable
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.orientation = 'horizontal'
-        self.on_electrode()
+        self._update_electrodes()
 
-    def on_electrode(self):
+    def _update_electrodes(self):
         self.clear_widgets()
-        for i in range(self.electrodes):
-            self.add_widget(ElectrodeWidget(electrode_index=i))
+
+        led_layer = BoxLayout(id='leds', orientation='horizontal', size=self.size, pos=self.pos)
+        self.add_widget(led_layer)
+        # Fix ids reference since kivy doesn't have built-in mechanics to do it
+        self.ids['leds'] = weakref.proxy(led_layer)
+
+        if self.slider_layout == 'diva':
+            electrode_layer = BoxLayout(id='electrodes', orientation='horizontal', size=self.size, pos=self.pos)
+            for i in range(self.electrodes):
+                electrode_layer.add_widget(ElectrodeWidget(electrode_index=i))
+                led_layer.add_widget(LEDWidget(led_index=i))
+            self.add_widget(electrode_layer)
+            self.ids['electrodes'] = weakref.proxy(electrode_layer)
+        elif self.slider_layout == 'chu':
+            electrode_layer = GridLayout(id='electrodes', rows=2)
+            for i in range(self.electrodes):
+                # Calculate the actual ID according to widget insertion sequence
+                r = i // 16
+                c = 15 - (i % 16)
+                electrode_index = c * 2 + r
+                electrode_layer.add_widget(ElectrodeWidget(electrode_index=electrode_index))
+                if i % 2 == 1:
+                    # Partition
+                    led_layer.add_widget(LEDWidget(led_index=i, width=3, size_hint=(None, 1.0)))
+                else:
+                    # Panel
+                    led_layer.add_widget(LEDWidget(led_index=i))
+            self.add_widget(electrode_layer)
+            self.ids['electrodes'] = weakref.proxy(electrode_layer)
+
+    def on_electrodes(self, obj, value):
+        self._update_electrodes()
+
+    def on_slider_layout(self, obj, value):
+        self._update_electrodes()
 
 class SegaSliderApp(App):
     def build(self):
@@ -107,9 +149,9 @@ class SegaSliderApp(App):
             if key in ('port', 'mode', 'hwinfo',):
                 Logger.info('Serial port settings changed, restarting handler.')
                 self.reset_protocol_handler()
-            # TODO handler for layout changing
             if key in ('mode', 'layout',):
                 Logger.info('Layout settings changed.')
+                self.update_slider_layout()
 
     def reset_protocol_handler(self):
         # Start the serial/frontend event handler
@@ -127,12 +169,21 @@ class SegaSliderApp(App):
         except serial.serialutil.SerialException:
             Logger.exception('Failed to connect to serial port')
 
+    def update_slider_layout(self):
+        slider_widget = self.root.ids['slider_root']
+        default_mode = self.config.get('segaslider', 'mode')
+        potential_override = self.config.get('segaslider', 'layout')
+        mode = default_mode if potential_override == 'auto' else potential_override
+        slider_widget.slider_layout = mode
+
     def on_tick(self, dt):
         serial_status = self.root.ids['top_hud_serial_status']
         if self._slider_protocol is not None:
             if not serial_status.serial_connected:
                 serial_status.serial_connected = True
             slider_widget = self.root.ids['slider_root']
+            led_layer = slider_widget.ids['leds']
+            electrode_layer = slider_widget.ids['electrodes']
             hud = self.root.ids['top_hud_report_status']
             # populating the report
             report = bytearray(slider_widget.electrodes)
@@ -143,13 +194,14 @@ class SegaSliderApp(App):
                 Logger.debug('LED report queue underrun')
                 led_report = None
 
-            for w in slider_widget.children:
+            for w in electrode_layer.children:
                 if isinstance(w, ElectrodeWidget):
                     report[w.electrode_index] = w.value
-                    if led_report is not None and len(led_report['led_brg']) >= (w.electrode_index + 1) * 3:
-                        w.led_value[0] = led_report['led_brg'][(w.electrode_index * 3) + 1]
-                        w.led_value[1] = led_report['led_brg'][(w.electrode_index * 3) + 2]
-                        w.led_value[2] = led_report['led_brg'][(w.electrode_index * 3) + 0]
+            for w in led_layer.children:
+                if led_report is not None and len(led_report['led_brg']) >= (w.led_index + 1) * 3:
+                    w.led_value[0] = led_report['led_brg'][(w.led_index * 3) + 1]
+                    w.led_value[1] = led_report['led_brg'][(w.led_index * 3) + 2]
+                    w.led_value[2] = led_report['led_brg'][(w.led_index * 3) + 0]
             try:
                 if self._slider_protocol.input_report_enable.is_set():
                     self._slider_protocol.inputqueue.put_nowait(report)
@@ -163,7 +215,7 @@ class SegaSliderApp(App):
 
     def on_start(self):
         self.reset_protocol_handler()
-        Logger.info(self.user_data_dir)
+        self.update_slider_layout()
         try:
             # Put other initialization code here
             Clock.schedule_interval(self.on_tick, 12/1000)
