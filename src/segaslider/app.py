@@ -76,6 +76,7 @@ class ElectrodeWidget(ButtonBehavior, Widget):
 
 class SliderWidgetLayout(FloatLayout):
     electrodes = kvprops.NumericProperty(32)  # @UndefinedVariable
+    leds = kvprops.NumericProperty(32)  # @UndefinedVariable
     slider_layout = kvprops.OptionProperty('diva', options=['diva', 'chu'])  # @UndefinedVariable
 
     def __init__(self, *args, **kwargs):
@@ -92,13 +93,18 @@ class SliderWidgetLayout(FloatLayout):
         self.ids['leds'] = weakref.proxy(led_layer)
 
         if self.slider_layout == 'diva':
+            self.electrodes = 32
+            self.leds = 32
             electrode_layer = BoxLayout(id='electrodes', orientation='horizontal', size=self.size, pos=self.pos)
             for i in range(self.electrodes):
                 electrode_layer.add_widget(ElectrodeWidget(electrode_index=i))
+            for i in range(self.leds):
                 led_layer.add_widget(LEDWidget(led_index=i))
             self.add_widget(electrode_layer)
             self.ids['electrodes'] = weakref.proxy(electrode_layer)
         elif self.slider_layout == 'chu':
+            self.electrodes = 32
+            self.leds = 31
             electrode_layer = GridLayout(id='electrodes', rows=2)
             for i in range(self.electrodes):
                 # Calculate the actual ID according to widget insertion sequence
@@ -106,6 +112,7 @@ class SliderWidgetLayout(FloatLayout):
                 c = 15 - (i % 16)
                 electrode_index = c * 2 + r
                 electrode_layer.add_widget(ElectrodeWidget(electrode_index=electrode_index))
+            for i in range(self.leds):
                 if i % 2 == 1:
                     # Partition
                     led_layer.add_widget(LEDWidget(led_index=i, width=3, size_hint=(None, 1.0)))
@@ -114,9 +121,6 @@ class SliderWidgetLayout(FloatLayout):
                     led_layer.add_widget(LEDWidget(led_index=i))
             self.add_widget(electrode_layer)
             self.ids['electrodes'] = weakref.proxy(electrode_layer)
-
-    def on_electrodes(self, obj, value):
-        self._update_electrodes()
 
     def on_slider_layout(self, obj, value):
         self._update_electrodes()
@@ -195,7 +199,7 @@ class SegaSliderApp(App):
                 led_report = None
 
             for w in electrode_layer.children:
-                if isinstance(w, ElectrodeWidget):
+                if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
                     report[w.electrode_index] = w.value
             for w in led_layer.children:
                 if led_report is not None and len(led_report['led_brg']) >= (w.led_index + 1) * 3:
