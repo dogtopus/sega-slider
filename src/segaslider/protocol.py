@@ -41,7 +41,7 @@ class SliderCommand(enum.IntEnum):
     input_report = 0x01
     led_report = 0x02
     enable_slider_report = 0x03
-    unk_0x04 = 0x04
+    disable_slider_report = 0x04
     unk_0x09 = 0x09
     unk_0x0a = 0x0a
     ping = 0x10
@@ -77,7 +77,7 @@ class SliderDevice(object):
         if self._mode == 'chu':
             self._dispatch.update({
                 # TODO figure out what to return
-                SliderCommand.unk_0x04: self.handle_empty_response,
+                SliderCommand.disable_slider_report: self.handle_disable_slider_report,
             })
         elif self._mode == 'diva':
             self._dispatch.update({
@@ -97,7 +97,11 @@ class SliderDevice(object):
     def handle_enable_slider_report(self, cmd, args):
         self._logger.info('Open sesame')
         self.input_report_enable.set()
-        self.send_cmd(cmd, args)
+        #self.send_cmd(cmd, args)
+
+    def handle_disable_slider_report(self, cmd, args):
+        self._logger.info('Close sesame')
+        self.input_report_enable.clear()
 
     def handle_empty_response(self, cmd, args):
         if cmd == SliderCommand.ping:

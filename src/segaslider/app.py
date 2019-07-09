@@ -214,6 +214,9 @@ class SegaSliderApp(App):
                     self._slider_protocol.inputqueue.put_nowait(report)
                     if not hud.report_enabled:
                         hud.report_enabled = True
+                else:
+                    if hud.report_enabled:
+                        hud.report_enabled = False
             except queue.Full:
                 Logger.warning('Input report queue overrun')
         else:
