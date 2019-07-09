@@ -97,11 +97,11 @@ class SliderDevice(object):
     def handle_enable_slider_report(self, cmd, args):
         self._logger.info('Open sesame')
         self.input_report_enable.set()
-        #self.send_cmd(cmd, args)
 
     def handle_disable_slider_report(self, cmd, args):
         self._logger.info('Close sesame')
         self.input_report_enable.clear()
+        self.send_cmd(SliderCommand.disable_slider_report)
 
     def handle_empty_response(self, cmd, args):
         if cmd == SliderCommand.ping:
