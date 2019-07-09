@@ -54,6 +54,7 @@ class SliderDevice(object):
         self._mode = mode
         self.ser = serial.Serial(port, 115200)
         self.ser.timeout = 0.1
+        self.ser.write_timeout = 0.1
         self.ser_lock = threading.Lock()
         self.serial_event_thread = threading.Thread(target=self.run_serial_event_handler)
         self.frontend_event_thread = threading.Thread(target=self.run_frontend_event_handler)
@@ -128,7 +129,13 @@ class SliderDevice(object):
         buf.write(self.e0d0ctx.finalize(self.cksumctx_tx.getvalue().to_bytes(1, 'big')))
         self._logger.debug('Reply: %s', repr(buf.getvalue()))
         with self.ser_lock:
-            self.ser.write(buf.getbuffer())
+            try:
+                self.ser.write(buf.getbuffer())
+            except serial.SerialTimeoutException:
+                # OS serial buffer overrun, usually not a good sign (except if using a null modem driver and the other side disconnects)
+                self._logger.error('OS serial TX buffer overrun')
+                # Report to upper level as well
+                raise
 
     def _stitch_and_dispatch(self, packet):
         self.partial_packets.write(packet)
@@ -160,7 +167,11 @@ class SliderDevice(object):
                 args = stitched[2:-1]
                 if cmd in self._dispatch:
                     self._logger.debug('cmd 0x%02x args %s', cmd, repr(bytes(args)))
-                    self._dispatch[cmd](cmd, args)
+                    try:
+                        self._dispatch[cmd](cmd, args)
+                    except serial.SerialTimeoutException:
+                        # Top-level timeout exception handler (ignore)
+                        pass
                 else:
                     self._logger.warning('Unknown cmd 0x%02x args %s', cmd, repr(bytes(args)))
             # manually free the memoryviews
@@ -197,7 +208,11 @@ class SliderDevice(object):
                     self._logger.warning('Input report queue underrun')
                     continue
                 self._logger.debug('Pushing input report')
-                self.send_input_report(report_body)
+                try:
+                    self.send_input_report(report_body)
+                except serial.SerialTimeoutException:
+                    pass
+
         self._logger.info('Frontend event handler stopped')
 
     def start(self):
