@@ -17,10 +17,10 @@ from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.behaviors.button import ButtonBehavior
 from kivy.clock import Clock
 import kivy.properties as kvprops
 import kivy.resources as kvres
+import kivy.metrics as kvmetrics
 
 # For exception handling
 import queue
@@ -31,12 +31,14 @@ from . import protocol
 class LEDWidget(Widget):
     led_index = kvprops.NumericProperty(0)  # @UndefinedVariable
     led_value = kvprops.ListProperty([0, 0, 0])  # @UndefinedVariable
+    top_slider_object = kvprops.ObjectProperty(None)  # @UndefinedVariable
 
-class ElectrodeWidget(ButtonBehavior, Widget):
+class ElectrodeWidget(Widget):
     electrode_index = kvprops.NumericProperty(0)  # @UndefinedVariable
     value = kvprops.NumericProperty(0)  # @UndefinedVariable
     #led_value = kvprops.ListProperty([0, 0, 0])  # @UndefinedVariable
     overlay_alpha = kvprops.NumericProperty(0.0)  # @UndefinedVariable
+    top_slider_object = kvprops.ObjectProperty(None)  # @UndefinedVariable
 
 #     def _collide_plus(self, touch):
 #         tx, ty = touch.pos
@@ -56,16 +58,32 @@ class ElectrodeWidget(ButtonBehavior, Widget):
 #             else:
 #                 return False
 
+    def _collide_with_overlap(self, x, y):
+        if self.top_slider_object is not None and isinstance(self.top_slider_object, SliderWidgetLayout):
+            x_overlap = kvmetrics.mm(self.top_slider_object.x_overlap_mm)
+            y_overlap = kvmetrics.mm(self.top_slider_object.y_overlap_mm)
+            x1, x2 = self.x - x_overlap, self.right + x_overlap
+            y1, y2 = self.y - y_overlap, self.top + y_overlap
+            return x1 <= x <= x2 and y1 <= y <= y2 and self.parent.collide_point(x, y)
+        else:
+            Logger.warning('Using electrode widget outside slider widget')
+            return super().collide_point(x, y)
+
+    def collide_point(self, x, y):
+        return self._collide_with_overlap(x, y)
+
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
             touch.grab(self)
             # Use 0xfe to avoid extra overhead
             self.value = 0xfe
+        super().on_touch_down(touch)
 
     def on_touch_up(self, touch):
         if touch.grab_current is self:
             touch.ungrab(self)
             self.value = 0x0
+        super().on_touch_up(touch)
 
     def on_touch_move(self, touch):
         was_us = touch.grab_current is self
@@ -76,11 +94,14 @@ class ElectrodeWidget(ButtonBehavior, Widget):
         elif not was_us and is_us:
             touch.grab(self)
             self.value = 0xfe
+        super().on_touch_move(touch)
 
 class SliderWidgetLayout(FloatLayout):
     electrodes = kvprops.NumericProperty(32)  # @UndefinedVariable
     leds = kvprops.NumericProperty(32)  # @UndefinedVariable
     slider_layout = kvprops.OptionProperty('diva', options=['diva', 'chu'])  # @UndefinedVariable
+    x_overlap_mm = kvprops.NumericProperty(0.0)  # @UndefinedVariable
+    y_overlap_mm = kvprops.NumericProperty(0.0)  # @UndefinedVariable
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,9 +121,9 @@ class SliderWidgetLayout(FloatLayout):
             self.leds = 32
             electrode_layer = BoxLayout(id='electrodes', orientation='horizontal', size=self.size, pos=self.pos)
             for i in range(self.electrodes):
-                electrode_layer.add_widget(ElectrodeWidget(electrode_index=i))
+                electrode_layer.add_widget(ElectrodeWidget(electrode_index=i, top_slider_object=self))
             for i in range(self.leds):
-                led_layer.add_widget(LEDWidget(led_index=i))
+                led_layer.add_widget(LEDWidget(led_index=i, top_slider_object=self))
             self.add_widget(electrode_layer)
             self.ids['electrodes'] = weakref.proxy(electrode_layer)
         elif self.slider_layout == 'chu':
@@ -114,14 +135,14 @@ class SliderWidgetLayout(FloatLayout):
                 r = i // 16
                 c = 15 - (i % 16)
                 electrode_index = c * 2 + r
-                electrode_layer.add_widget(ElectrodeWidget(electrode_index=electrode_index))
+                electrode_layer.add_widget(ElectrodeWidget(electrode_index=electrode_index, top_slider_object=self))
             for i in range(self.leds):
                 if i % 2 == 1:
                     # Partition
-                    led_layer.add_widget(LEDWidget(led_index=i, width=3, size_hint=(None, 1.0)))
+                    led_layer.add_widget(LEDWidget(led_index=i, width=3, size_hint=(None, 1.0), top_slider_object=self))
                 else:
                     # Panel
-                    led_layer.add_widget(LEDWidget(led_index=i))
+                    led_layer.add_widget(LEDWidget(led_index=i, top_slider_object=self))
             self.add_widget(electrode_layer)
             self.ids['electrodes'] = weakref.proxy(electrode_layer)
 
@@ -141,6 +162,8 @@ class SegaSliderApp(App):
             mode='diva',
             layout='auto',
             hwinfo='auto',
+            x_overlap_mm=6.0,
+            y_overlap_mm=6.0,
         ))
 
     def build_settings(self, settings):
@@ -159,6 +182,9 @@ class SegaSliderApp(App):
             if key in ('mode', 'layout',):
                 Logger.info('Layout settings changed.')
                 self.update_slider_layout()
+            if key in ('x_overlap_mm', 'y_overlap_mm'):
+                Logger.info('Overlap settings changed.')
+                self.sync_electrode_overlap()
 
     def reset_protocol_handler(self):
         # Start the serial/frontend event handler
@@ -182,6 +208,12 @@ class SegaSliderApp(App):
         potential_override = self.config.get('segaslider', 'layout')
         mode = default_mode if potential_override == 'auto' else potential_override
         slider_widget.slider_layout = mode
+        self.sync_electrode_overlap()
+
+    def sync_electrode_overlap(self):
+        slider_widget = self.root.ids['slider_root']
+        slider_widget.x_overlap_mm = self.config.get('segaslider', 'x_overlap_mm')
+        slider_widget.y_overlap_mm = self.config.get('segaslider', 'y_overlap_mm')
 
     def on_tick(self, dt):
         serial_status = self.root.ids['top_hud_serial_status']

@@ -48,5 +48,19 @@
             "diva",
             "chu"
         ]
+    },
+    {
+        "type": "numeric",
+        "section": "segaslider",
+        "key": "x_overlap_mm",
+        "title": "X collision overlap",
+        "desc": "Overlap between the collision box of nearby electrodes on horizontal axis (in millimeters)"
+    },
+    {
+        "type": "numeric",
+        "section": "segaslider",
+        "key": "y_overlap_mm",
+        "title": "Y collision overlap",
+        "desc": "Overlap between the collision box of nearby electrodes on vertical axis (in millimeters)"
     }
 ]
