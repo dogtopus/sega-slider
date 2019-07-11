@@ -236,11 +236,13 @@ class SegaSliderApp(App):
             for w in electrode_layer.children:
                 if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
                     report[w.electrode_index] = w.value
+            # Clamp the brightness factor to 1
+            brightness_factor = max((led_report['brightness'] / 63), 1.0)
             for w in led_layer.children:
                 if led_report is not None and len(led_report['led_brg']) >= (w.led_index + 1) * 3:
-                    w.led_value[0] = led_report['led_brg'][(w.led_index * 3) + 1]
-                    w.led_value[1] = led_report['led_brg'][(w.led_index * 3) + 2]
-                    w.led_value[2] = led_report['led_brg'][(w.led_index * 3) + 0]
+                    w.led_value[0] = (led_report['led_brg'][(w.led_index * 3) + 1] / 255) * brightness_factor
+                    w.led_value[1] = (led_report['led_brg'][(w.led_index * 3) + 2] / 255) * brightness_factor
+                    w.led_value[2] = (led_report['led_brg'][(w.led_index * 3) + 0] / 255) * brightness_factor
             try:
                 if self._slider_protocol.input_report_enable.is_set():
                     self._slider_protocol.inputqueue.put_nowait(report)
