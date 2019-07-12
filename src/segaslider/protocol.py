@@ -203,17 +203,18 @@ class SliderDevice(object):
 
     def run_frontend_event_handler(self):
         self._logger.info('Starting frontend event handler')
+        report_body = None
         while not self._halt.wait(0):
             if self.input_report_enable.wait(timeout=0.1):
                 self._logger.debug('Waiting for input report')
                 try:
-                    report_body = self.inputqueue.get(timeout=0.1)
+                    report_body = self.inputqueue.get(timeout=0.05)
                 except queue.Empty:
                     self._logger.warning('Input report queue underrun')
-                    continue
                 self._logger.debug('Pushing input report')
                 try:
-                    self.send_input_report(report_body)
+                    if report_body is not None:
+                        self.send_input_report(report_body)
                 except serial.SerialTimeoutException:
                     pass
 
