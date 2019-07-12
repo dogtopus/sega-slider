@@ -224,35 +224,36 @@ class SegaSliderApp(App):
             led_layer = slider_widget.ids['leds']
             electrode_layer = slider_widget.ids['electrodes']
             hud = self.root.ids['top_hud_report_status']
-            # populating the report
-            report = bytearray(slider_widget.electrodes)
 
             try:
                 led_report = self._slider_protocol.ledqueue.get_nowait()
             except queue.Empty:
-                Logger.debug('LED report queue underrun')
                 led_report = None
+            if led_report is not None:
+                # Clamp the brightness factor to 1
+                brightness_factor = min((led_report['brightness'] / 63), 1.0)
+                for w in led_layer.children:
+                    if len(led_report['led_brg']) >= (w.led_index + 1) * 3:
+                        w.led_value[0] = (led_report['led_brg'][(w.led_index * 3) + 1] / 255) * brightness_factor
+                        w.led_value[1] = (led_report['led_brg'][(w.led_index * 3) + 2] / 255) * brightness_factor
+                        w.led_value[2] = (led_report['led_brg'][(w.led_index * 3) + 0] / 255) * brightness_factor
 
-            for w in electrode_layer.children:
-                if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
-                    report[w.electrode_index] = w.value
-            # Clamp the brightness factor to 1
-            brightness_factor = max((led_report['brightness'] / 63), 1.0)
-            for w in led_layer.children:
-                if led_report is not None and len(led_report['led_brg']) >= (w.led_index + 1) * 3:
-                    w.led_value[0] = (led_report['led_brg'][(w.led_index * 3) + 1] / 255) * brightness_factor
-                    w.led_value[1] = (led_report['led_brg'][(w.led_index * 3) + 2] / 255) * brightness_factor
-                    w.led_value[2] = (led_report['led_brg'][(w.led_index * 3) + 0] / 255) * brightness_factor
-            try:
-                if self._slider_protocol.input_report_enable.is_set():
+            if self._slider_protocol.input_report_enable.is_set():
+                if not hud.report_enabled:
+                    hud.report_enabled = True
+                # populate the report
+                report = bytearray(slider_widget.electrodes)
+                for w in electrode_layer.children:
+                    if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
+                        report[w.electrode_index] = w.value
+                try:
                     self._slider_protocol.inputqueue.put_nowait(report)
-                    if not hud.report_enabled:
-                        hud.report_enabled = True
-                else:
-                    if hud.report_enabled:
-                        hud.report_enabled = False
-            except queue.Full:
-                Logger.warning('Input report queue overrun')
+                except queue.Full:
+                    Logger.warning('Input report queue overrun')
+            else:
+                if hud.report_enabled:
+                    hud.report_enabled = False
+
         else:
             if serial_status.serial_connected:
                 serial_status.serial_connected = False
