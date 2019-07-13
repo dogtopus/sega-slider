@@ -58,6 +58,8 @@ class SliderDevice(object):
         self.ser_lock = threading.Lock()
         self.serial_event_thread = threading.Thread(target=self.run_serial_event_handler)
         self.frontend_event_thread = threading.Thread(target=self.run_frontend_event_handler)
+        self.serial_event_thread.daemon = True
+        self.frontend_event_thread.daemon = True
         self.e0d0ctx = e0d0.E0D0Context(sync=0xff, esc=0xfd)
         self.cksumctx_rx = checksum.NegativeJVSChecksum(init=-0xff)
         self.cksumctx_tx = checksum.NegativeJVSChecksum(init=-0xff)
@@ -227,8 +229,10 @@ class SliderDevice(object):
     def halt(self):
         self._halt.set()
         self._logger.info('Waiting for threads to terminate')
-        self.serial_event_thread.join()
-        self.frontend_event_thread.join()
+        self.serial_event_thread.join(timeout=1)
+        self.frontend_event_thread.join(timeout=1)
+        if self.frontend_event_thread.is_alive() or self.serial_event_thread.is_alive():
+            self._logger.warning('One or more threads are still alive, force-quitting anyway')
         self._logger.info('Closing serial port')
         self.ser.close()
 
