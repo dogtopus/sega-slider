@@ -54,13 +54,20 @@
         "section": "segaslider",
         "key": "x_overlap_mm",
         "title": "X collision overlap",
-        "desc": "Overlap between the collision box of nearby electrodes on horizontal axis (in millimeters)"
+        "desc": "Overlap between the collision box of nearby electrodes on horizontal axis (in millimeters) (default: 6.0)"
     },
     {
         "type": "numeric",
         "section": "segaslider",
         "key": "y_overlap_mm",
         "title": "Y collision overlap",
-        "desc": "Overlap between the collision box of nearby electrodes on vertical axis (in millimeters)"
+        "desc": "Overlap between the collision box of nearby electrodes on vertical axis (in millimeters) (default: 6.0)"
+    },
+    {
+        "type": "numeric",
+        "section": "segaslider",
+        "key": "gamma",
+        "title": "LED gamma",
+        "desc": "Set gamma correction value for the emulated slider LED (gamma = 1.0: no correction; gamma > 1.0: darker than raw value; 0.0 < gamma < 1.0: brighter than raw value) (default: 0.5)"
     }
 ]

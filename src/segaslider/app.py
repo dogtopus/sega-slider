@@ -10,6 +10,7 @@ logging.Logger.manager.root = Logger
 
 import os
 import weakref
+import math
 
 # Usual kivy stuff
 from kivy.app import App
@@ -164,6 +165,7 @@ class SegaSliderApp(App):
             hwinfo='auto',
             x_overlap_mm=6.0,
             y_overlap_mm=6.0,
+            gamma=0.5,
         ))
 
     def build_settings(self, settings):
@@ -212,8 +214,8 @@ class SegaSliderApp(App):
 
     def sync_electrode_overlap(self):
         slider_widget = self.root.ids['slider_root']
-        slider_widget.x_overlap_mm = self.config.get('segaslider', 'x_overlap_mm')
-        slider_widget.y_overlap_mm = self.config.get('segaslider', 'y_overlap_mm')
+        slider_widget.x_overlap_mm = self.config.getfloat('segaslider', 'x_overlap_mm')
+        slider_widget.y_overlap_mm = self.config.getfloat('segaslider', 'y_overlap_mm')
 
     def on_tick(self, dt):
         serial_status = self.root.ids['top_hud_serial_status']
@@ -230,13 +232,17 @@ class SegaSliderApp(App):
             except queue.Empty:
                 led_report = None
             if led_report is not None:
+                gamma = self.config.getfloat('segaslider', 'gamma')
                 # Clamp the brightness factor to 1
                 brightness_factor = min((led_report['brightness'] / 63), 1.0)
                 for w in led_layer.children:
                     if len(led_report['led_brg']) >= (w.led_index + 1) * 3:
-                        w.led_value[0] = (led_report['led_brg'][(w.led_index * 3) + 1] / 255) * brightness_factor
-                        w.led_value[1] = (led_report['led_brg'][(w.led_index * 3) + 2] / 255) * brightness_factor
-                        w.led_value[2] = (led_report['led_brg'][(w.led_index * 3) + 0] / 255) * brightness_factor
+                        for index_rgb in range(3):
+                            # rgb -> brg
+                            # 0 -> 1, 1 -> 2, 2 -> 0
+                            led_offset = w.led_index * 3
+                            index_brg = (index_rgb + 1) % 3
+                            w.led_value[index_rgb] = math.pow((led_report['led_brg'][led_offset + index_brg] / 255) * brightness_factor, gamma)
 
             if self._slider_protocol.input_report_enable.is_set():
                 if not hud.report_enabled:
