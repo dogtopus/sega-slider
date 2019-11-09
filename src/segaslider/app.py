@@ -140,7 +140,7 @@ class SliderWidgetLayout(FloatLayout):
             for i in range(self.leds):
                 if i % 2 == 1:
                     # Partition
-                    led_layer.add_widget(LEDWidget(led_index=i, width=3, size_hint=(None, 1.0), top_slider_object=self))
+                    led_layer.add_widget(LEDWidget(led_index=self.leds-1-i, width=3, size_hint=(None, 1.0), top_slider_object=self))
                 else:
                     # Panel
                     led_layer.add_widget(LEDWidget(led_index=self.leds-1-i, top_slider_object=self))
