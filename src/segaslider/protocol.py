@@ -37,6 +37,7 @@ HW_INFO = dict(
     )),
 )
 
+
 class SliderCommand(enum.IntEnum):
     input_report = 0x01
     led_report = 0x02
@@ -47,6 +48,13 @@ class SliderCommand(enum.IntEnum):
     reset = 0x10
     exception = 0xee
     get_hw_info = 0xf0
+
+
+class ExceptionCode1(enum.IntEnum):
+    wrong_checksum = 0x1
+    bus_error = 0x2
+    internal_error = 0xed
+
 
 class SliderDevice(object):
     def __init__(self, port, mode='diva'):
@@ -117,8 +125,11 @@ class SliderDevice(object):
         self.send_cmd(SliderCommand.input_report, report)
         self.ser.flush()
 
-    def send_exception(self, body):
-        self.send_cmd(SliderCommand.exception, body)
+    def send_exception(self, code1):
+        response = bytearray(2)
+        response[0] = 0xff
+        response[1] = code1
+        self.send_cmd(SliderCommand.exception, bytes(response))
 
     def send_cmd(self, cmd, args=None):
         self.cksumctx_tx.reset()
@@ -166,7 +177,8 @@ class SliderDevice(object):
             self.rx_len_hint = 1
             if self.cksumctx_rx.getvalue() != 0:
                 # Warn, discard packet and return
-                self._logger.warning('bad checksum (expecting 0x%02x, got 0x%02x)', stitched[-1], (self.cksumctx_rx.getvalue() + stitched[-1]) & 0xff)
+                self._logger.error('bad checksum (expecting 0x%02x, got 0x%02x)', stitched[-1], (self.cksumctx_rx.getvalue() + stitched[-1]) & 0xff)
+                self.send_exception(ExceptionCode1.wrong_checksum)
             else:
                 # Proceed to dispatch
                 cmd = stitched[0]
