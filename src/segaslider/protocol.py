@@ -44,7 +44,7 @@ class SliderCommand(enum.IntEnum):
     disable_slider_report = 0x04
     unk_0x09 = 0x09
     unk_0x0a = 0x0a
-    ping = 0x10
+    reset = 0x10
     exception = 0xee
     get_hw_info = 0xf0
 
@@ -73,7 +73,7 @@ class SliderDevice(object):
             # input_report should be periodical input report only
             SliderCommand.led_report: self.handle_led_report,
             SliderCommand.enable_slider_report: self.handle_enable_slider_report,
-            SliderCommand.ping: self.handle_empty_response,
+            SliderCommand.reset: self.handle_empty_response,
             SliderCommand.get_hw_info: self.handle_get_hw_info,
         }
         if self._mode == 'chu':
@@ -106,8 +106,8 @@ class SliderDevice(object):
         self.send_cmd(SliderCommand.disable_slider_report)
 
     def handle_empty_response(self, cmd, args):
-        if cmd == SliderCommand.ping:
-            self._logger.info('Pong!')
+        if cmd == SliderCommand.reset:
+            self._logger.info('Reset')
         self.send_cmd(cmd)
 
     def handle_get_hw_info(self, cmd, args):
