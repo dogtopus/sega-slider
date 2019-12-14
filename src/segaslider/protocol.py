@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import asyncio
 import io
 import serial
 import queue
 import enum
 import logging
-import threading
 import struct
 from collections import namedtuple
 
@@ -56,27 +56,17 @@ class ExceptionCode1(enum.IntEnum):
     internal_error = 0xed
 
 
-class SliderDevice(object):
-    def __init__(self, port, mode='diva'):
+class SliderDevice(asyncio.Protocol):
+    def __init__(self, mode='diva'):
+        self._transport = None
         self._logger = logging.getLogger('SliderDevice')
         self._mode = mode
-        self.ser = serial.Serial(port, 115200)
-        self.ser.timeout = 0.1
-        self.ser.write_timeout = 0.1
-        self.ser_lock = threading.Lock()
-        self.serial_event_thread = threading.Thread(target=self.run_serial_event_handler)
-        self.frontend_event_thread = threading.Thread(target=self.run_frontend_event_handler)
-        self.serial_event_thread.daemon = True
-        self.frontend_event_thread.daemon = True
         self.e0d0ctx = e0d0.E0D0Context(sync=0xff, esc=0xfd)
         self.cksumctx_rx = checksum.NegativeJVSChecksum(init=-0xff)
         self.cksumctx_tx = checksum.NegativeJVSChecksum(init=-0xff)
-        self.input_report_enable = threading.Event()
         self.ledqueue = queue.Queue(maxsize=4)
         self.inputqueue = queue.Queue(maxsize=4)
         self.partial_packets = io.BytesIO()
-        self.rx_len_hint = 1
-        self._halt = threading.Event()
         self._dispatch = {
             # input_report should be periodical input report only
             SliderCommand.led_report: self.handle_led_report,
@@ -94,6 +84,18 @@ class SliderDevice(object):
                 SliderCommand.unk_0x09: self.handle_empty_response,
                 SliderCommand.unk_0x0a: self.handle_empty_response,
             })
+
+    def connection_made(self, transport):
+        self._transport = transport
+
+    def data_received(self, data):
+        packets = self.e0d0ctx.decode(data)
+        for p in packets:
+            self._stitch_and_dispatch(p)
+
+    def connection_lost(self, exc):
+        # TODO
+        pass
 
     def handle_led_report(self, cmd, args):
         self._logger.debug('new led report')
@@ -123,7 +125,7 @@ class SliderDevice(object):
 
     def send_input_report(self, report):
         self.send_cmd(SliderCommand.input_report, report)
-        self.ser.flush()
+        #self.ser.flush()
 
     def send_exception(self, code1):
         response = bytearray(2)
@@ -145,14 +147,8 @@ class SliderDevice(object):
             self.cksumctx_tx.update(args)
         buf.write(self.e0d0ctx.finalize(self.cksumctx_tx.getvalue().to_bytes(1, 'big')))
         self._logger.debug('Reply: %s', repr(buf.getvalue()))
-        with self.ser_lock:
-            try:
-                self.ser.write(buf.getbuffer())
-            except serial.SerialTimeoutException:
-                # OS serial buffer overrun, usually not a good sign (except if using a null modem driver and the other side disconnects)
-                self._logger.error('OS serial TX buffer overrun')
-                # Report to upper level as well
-                raise
+        # TODO: possible error handling
+        self._transport.write(buf.getbuffer())
 
     def _stitch_and_dispatch(self, packet):
         self.partial_packets.write(packet)
@@ -174,7 +170,6 @@ class SliderDevice(object):
         if packet_len == self.partial_packets.tell():
             stitched = self.partial_packets.getbuffer()
             assert packet_len == len(stitched)
-            self.rx_len_hint = 1
             if self.cksumctx_rx.getvalue() != 0:
                 # Warn, discard packet and return
                 self._logger.error('bad checksum (expecting 0x%02x, got 0x%02x)', stitched[-1], (self.cksumctx_rx.getvalue() + stitched[-1]) & 0xff)
@@ -185,11 +180,7 @@ class SliderDevice(object):
                 args = stitched[2:-1]
                 if cmd in self._dispatch:
                     self._logger.debug('cmd 0x%02x args %s', cmd, repr(bytes(args)))
-                    try:
-                        self._dispatch[cmd](cmd, args)
-                    except serial.SerialTimeoutException:
-                        # Top-level timeout exception handler (ignore)
-                        pass
+                    self._dispatch[cmd](cmd, args)
                 else:
                     self._logger.warning('Unknown cmd 0x%02x args %s', cmd, repr(bytes(args)))
             # manually free the memoryviews
@@ -201,55 +192,15 @@ class SliderDevice(object):
             del self.partial_packets
             self.partial_packets = io.BytesIO()
             self.cksumctx_rx.reset()
-        else:
-            # We have at least (total length - buffered length) bytes to read (because e0d0)
-            new_hint = packet_len - self.partial_packets.tell()
-            assert new_hint >= 1
-            self.rx_len_hint = new_hint
 
-    def run_serial_event_handler(self):
-        self._logger.info('Starting serial event handler')
-        while not self._halt.wait(0):
-            packets = self.e0d0ctx.decode(self.ser.read(self.rx_len_hint))
-            for p in packets:
-                self._stitch_and_dispatch(p)
-        self._logger.info('Serial event handler stopped')
 
-    def run_frontend_event_handler(self):
-        self._logger.info('Starting frontend event handler')
-        report_body = None
-        while not self._halt.wait(0):
-            if self.input_report_enable.wait(timeout=0.1):
-                self._logger.debug('Waiting for input report')
-                try:
-                    report_body = self.inputqueue.get(timeout=0.05)
-                except queue.Empty:
-                    self._logger.warning('Input report queue underrun')
-                self._logger.debug('Pushing input report')
-                try:
-                    if report_body is not None:
-                        self.send_input_report(report_body)
-                except serial.SerialTimeoutException:
-                    pass
-
-        self._logger.info('Frontend event handler stopped')
-
-    def start(self):
-        self.serial_event_thread.start()
-        self.frontend_event_thread.start()
-
-    def halt(self):
-        self._halt.set()
-        self._logger.info('Waiting for threads to terminate')
-        self.serial_event_thread.join(timeout=1)
-        self.frontend_event_thread.join(timeout=1)
-        if self.frontend_event_thread.is_alive() or self.serial_event_thread.is_alive():
-            self._logger.warning('One or more threads are still alive, force-quitting anyway')
-        self._logger.info('Closing serial port')
-        self.ser.close()
+async def test_tcp(host, port):
+    loop = asyncio.get_running_loop()
+    server = await loop.create_server(lambda: SliderDevice('diva'), host, port)
+    async with server:
+        await server.serve_forever()
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    proto = SliderDevice('/dev/ttyUSB0')
-    proto.run_serial_event_handler()
+    asyncio.run(test_tcp('127.0.0.1', 12345))
