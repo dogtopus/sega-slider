@@ -189,28 +189,27 @@ class SegaSliderApp(App):
                 Logger.info('Overlap settings changed.')
                 self.sync_electrode_overlap()
 
+    async def _reset_protocol_handler_coro(self):
+        default_mode = self.config.get('segaslider', 'mode')
+        potential_override = self.config.get('segaslider', 'hwinfo')
+        mode = default_mode if potential_override == 'auto' else potential_override
+        try:
+            self._slider_transport, self._slider_protocol = await protocol.create_connection(asyncio.get_running_loop(), self.config.get('segaslider', 'port'), mode)
+        except Exception:
+            Logger.exception('Failed to connect to port')
+        else:
+            self._slider_protocol.on('connection_lost', self._on_connection_lost)
+            self._slider_protocol.on('led', self._on_led)
+            self._on_connection_made()
+        
     def reset_protocol_handler(self):
-        # bad nodejs code
-        def _cb(fut):
-            exc = fut.exception()
-            if exc is not None:
-                Logger.exception('Failed to connect to port', exc_info=exc)
-            else:
-                self._slider_transport, self._slider_protocol = fut.result()
-                self._slider_protocol.on('connection_lost', self._on_connection_lost)
-                self._on_connection_made()
-
         # Start the serial/frontend event handler
         if self.transport_available():
             self._slider_transport.close()
             report_status = self.root.ids['top_hud_report_status']
             report_status.report_enabled = False
-        default_mode = self.config.get('segaslider', 'mode')
-        potential_override = self.config.get('segaslider', 'hwinfo')
-        mode = default_mode if potential_override == 'auto' else potential_override
-        loop = asyncio.get_running_loop()
-        t = asyncio.create_task(protocol.create_connection(loop, self.config.get('segaslider', 'port'), mode))
-        t.add_done_callback(_cb)
+        # okay nodejs code
+        asyncio.create_task(self._reset_protocol_handler_coro())
 
     def transport_available(self):
         return self._slider_transport is not None and not self._slider_transport.is_closing()
@@ -236,7 +235,7 @@ class SegaSliderApp(App):
         serial_status = self.root.ids['top_hud_serial_status']
         serial_status.serial_connected = True
 
-    def on_led(self, report):
+    def _on_led(self, report):
         slider_widget = self.root.ids['slider_root']
         led_layer = slider_widget.ids['leds']
         gamma = self.config.getfloat('segaslider', 'gamma')
