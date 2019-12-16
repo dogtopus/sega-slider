@@ -15,6 +15,7 @@ from collections import namedtuple
 
 from .helper import e0d0
 from .helper import checksum
+from sys import exc_info
 
 SliderHardwareInfo = namedtuple('SliderHardwareInfo',
                                 ('model', 'device_class', 'fw_type', 'unk_0xe', 'fw_ver', 'unk_0x10', 'unk_0x11',))
@@ -111,7 +112,7 @@ class SliderDevice(asyncio.Protocol):
             self._logger.info('Connection closed')
             # TODO notify app
         else:
-            self._logger.error('Unexpected connection lost')
+            self._logger.exception('Unexpected connection lost', exc_info=exc)
             # TODO notify app
         self._run_callback('connection_lost', exc=exc)
 
