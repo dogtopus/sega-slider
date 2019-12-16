@@ -1,2 +1,4 @@
-kivy
+git+https://github.com/kivy/kivy.git
 pyserial
+pyserial-asyncio
+pybluez

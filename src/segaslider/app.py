@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from kivy import require as kvrequire
-kvrequire('1.10.0')
+kvrequire('2.0.0')
 
 # Forward all log entries from logging to kivy logger.
 import logging
@@ -11,6 +11,7 @@ logging.Logger.manager.root = Logger
 import os
 import weakref
 import math
+import asyncio
 
 # Usual kivy stuff
 from kivy.app import App
@@ -22,10 +23,6 @@ from kivy.clock import Clock
 import kivy.properties as kvprops
 import kivy.resources as kvres
 import kivy.metrics as kvmetrics
-
-# For exception handling
-import queue
-import serial
 
 from . import protocol
 
@@ -150,16 +147,20 @@ class SliderWidgetLayout(FloatLayout):
     def on_slider_layout(self, obj, value):
         self._update_electrodes()
 
+
 class SegaSliderApp(App):
+    report_enabled = kvprops.BooleanProperty(False)  # @UndefinedVariable
+
     def build(self):
         # Register the app directory as a resource directory
         kvres.resource_add_path(self.directory)
+        self._slider_transport = None
         self._slider_protocol = None
 
     def build_config(self, config):
         super().build_config(config)
         config.setdefaults('segaslider', dict(
-            port='/dev/ttyUSB0',
+            port='serial:/dev/ttyUSB0',
             mode='diva',
             layout='auto',
             hwinfo='auto',
@@ -189,20 +190,30 @@ class SegaSliderApp(App):
                 self.sync_electrode_overlap()
 
     def reset_protocol_handler(self):
+        # bad nodejs code
+        def _cb(fut):
+            exc = fut.exception()
+            if exc is not None:
+                Logger.exception('Failed to connect to port', exc_info=exc)
+            else:
+                self._slider_transport, self._slider_protocol = fut.result()
+                self._slider_protocol.on('connection_lost', self._on_connection_lost)
+                self._on_connection_made()
+
         # Start the serial/frontend event handler
-        if self._slider_protocol is not None:
-            self._slider_protocol.halt()
-            self._slider_protocol = None
+        if self.transport_available():
+            self._slider_transport.close()
             report_status = self.root.ids['top_hud_report_status']
             report_status.report_enabled = False
-        try:
-            default_mode = self.config.get('segaslider', 'mode')
-            potential_override = self.config.get('segaslider', 'hwinfo')
-            mode = default_mode if potential_override == 'auto' else potential_override
-            self._slider_protocol = protocol.SliderDevice(self.config.get('segaslider', 'port'), mode=mode)
-            self._slider_protocol.start()
-        except serial.serialutil.SerialException:
-            Logger.exception('Failed to connect to serial port')
+        default_mode = self.config.get('segaslider', 'mode')
+        potential_override = self.config.get('segaslider', 'hwinfo')
+        mode = default_mode if potential_override == 'auto' else potential_override
+        loop = asyncio.get_running_loop()
+        t = asyncio.create_task(protocol.create_connection(loop, self.config.get('segaslider', 'port'), mode))
+        t.add_done_callback(_cb)
+
+    def transport_available(self):
+        return self._slider_transport is not None and not self._slider_transport.is_closing()
 
     def update_slider_layout(self):
         slider_widget = self.root.ids['slider_root']
@@ -217,59 +228,56 @@ class SegaSliderApp(App):
         slider_widget.x_overlap_mm = self.config.getfloat('segaslider', 'x_overlap_mm')
         slider_widget.y_overlap_mm = self.config.getfloat('segaslider', 'y_overlap_mm')
 
-    def on_tick(self, dt):
+    def _on_connection_lost(self, exc):
         serial_status = self.root.ids['top_hud_serial_status']
-        if self._slider_protocol is not None:
-            if not serial_status.serial_connected:
-                serial_status.serial_connected = True
+        serial_status.serial_connected = False
+
+    def _on_connection_made(self):
+        serial_status = self.root.ids['top_hud_serial_status']
+        serial_status.serial_connected = True
+
+    def on_led(self, report):
+        slider_widget = self.root.ids['slider_root']
+        led_layer = slider_widget.ids['leds']
+        gamma = self.config.getfloat('segaslider', 'gamma')
+        # Clamp the brightness factor to 1
+        brightness_factor = min((report['brightness'] / 63), 1.0)
+        for w in led_layer.children:
+            if len(report['led_brg']) >= (w.led_index + 1) * 3:
+                for index_rgb in range(3):
+                    # rgb -> brg
+                    # 0 -> 1, 1 -> 2, 2 -> 0
+                    led_offset = w.led_index * 3
+                    index_brg = (index_rgb + 1) % 3
+                    w.led_value[index_rgb] = math.pow((report['led_brg'][led_offset + index_brg] / 255) * brightness_factor, gamma)
+
+    def on_report_enabled(self, val):
+        hud = self.root.ids['top_hud_report_status']
+        hud.report_enabled = val
+
+    def _on_report_state_change(self, enabled):
+        self.report_enabled = enabled
+
+    def on_tick(self, dt):
+        if self.transport_available():
             slider_widget = self.root.ids['slider_root']
-            led_layer = slider_widget.ids['leds']
             electrode_layer = slider_widget.ids['electrodes']
-            hud = self.root.ids['top_hud_report_status']
 
-            try:
-                led_report = self._slider_protocol.ledqueue.get_nowait()
-            except queue.Empty:
-                led_report = None
-            if led_report is not None:
-                gamma = self.config.getfloat('segaslider', 'gamma')
-                # Clamp the brightness factor to 1
-                brightness_factor = min((led_report['brightness'] / 63), 1.0)
-                for w in led_layer.children:
-                    if len(led_report['led_brg']) >= (w.led_index + 1) * 3:
-                        for index_rgb in range(3):
-                            # rgb -> brg
-                            # 0 -> 1, 1 -> 2, 2 -> 0
-                            led_offset = w.led_index * 3
-                            index_brg = (index_rgb + 1) % 3
-                            w.led_value[index_rgb] = math.pow((led_report['led_brg'][led_offset + index_brg] / 255) * brightness_factor, gamma)
-
-            if self._slider_protocol.input_report_enable.is_set():
-                if not hud.report_enabled:
-                    hud.report_enabled = True
+            if self.report_enabled:
                 # populate the report
                 report = bytearray(slider_widget.electrodes)
                 for w in electrode_layer.children:
                     if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
                         report[w.electrode_index] = w.value
-                try:
-                    self._slider_protocol.inputqueue.put_nowait(report)
-                except queue.Full:
-                    Logger.warning('Input report queue overrun')
-            else:
-                if hud.report_enabled:
-                    hud.report_enabled = False
-
-        else:
-            if serial_status.serial_connected:
-                serial_status.serial_connected = False
+                self._slider_protocol.send_input_report(report)
 
     def on_start(self):
         self.reset_protocol_handler()
         self.update_slider_layout()
         try:
             # Put other initialization code here
-            Clock.schedule_interval(self.on_tick, 12/1000)
+            # TODO sync with framerate
+            Clock.schedule_interval(self.on_tick, 1/60)
         except:
             # Halt the thread in case something happens
             Logger.exception('Exception occurred during startup. Notifying the protocol handler to quit.')
@@ -277,9 +285,11 @@ class SegaSliderApp(App):
             raise
 
     def on_stop(self):
-        if self._slider_protocol is not None:
-            self._slider_protocol.halt()
+        if self.transport_available():
+            self._slider_transport.close()
+        # TODO properly wait until close
         Logger.info('Will now exit')
 
 if __name__ == '__main__':
-    SegaSliderApp().run()
+    asyncio.run(SegaSliderApp().async_run('asyncio'))
+    #SegaSliderApp().run()
