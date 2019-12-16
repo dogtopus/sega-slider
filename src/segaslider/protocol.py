@@ -71,6 +71,7 @@ class SliderDevice(asyncio.Protocol):
         self.ledqueue = queue.Queue(maxsize=4)
         self.inputqueue = queue.Queue(maxsize=4)
         self.partial_packets = io.BytesIO()
+        self._callback = {}
         self._dispatch = {
             # input_report should be periodical input report only
             SliderCommand.led_report: self.handle_led_report,
@@ -89,8 +90,16 @@ class SliderDevice(asyncio.Protocol):
                 SliderCommand.unk_0x0a: self.handle_empty_response,
             })
 
+    def on(self, event, cb):
+        self._callback[event] = cb
+
+    def _run_callback(self, event, *argc, **argv):
+        if event in self._callback:
+            return self._callback[event](*argc, **argv)
+
     def connection_made(self, transport):
         self._transport = transport
+        self._run_callback('connection_made')
 
     def data_received(self, data):
         packets = self.e0d0ctx.decode(data)
@@ -104,28 +113,29 @@ class SliderDevice(asyncio.Protocol):
         else:
             self._logger.error('Unexpected connection lost')
             # TODO notify app
+        self._run_callback('connection_lost', exc=exc)
 
     def handle_led_report(self, cmd, args):
         self._logger.debug('new led report')
         # Copies the data to the queue
         report = dict(brightness=args[0], led_brg=bytes(args[1:]))
-        try:
-            self.ledqueue.put(report, timeout=0.1)
-        except queue.Full:
-            self._logger.warning('LED report queue overrun. Report dropped')
+        self._run_callback('led', report=report)
 
     def handle_enable_slider_report(self, cmd, args):
         self._logger.info('Open sesame')
-        # TODO
+        self._run_callback('report', enabled=True)
 
     def handle_disable_slider_report(self, cmd, args):
         self._logger.info('Close sesame')
-        # TODO
+        self._run_callback('report', enabled=False)
         self.send_cmd(SliderCommand.disable_slider_report)
 
+    def handle_reset(self, cmd, args):
+        self._logger.info('Reset')
+        self._run_callback('reset')
+        self.send_cmd(cmd)
+
     def handle_empty_response(self, cmd, args):
-        if cmd == SliderCommand.reset:
-            self._logger.info('Reset')
         self.send_cmd(cmd)
 
     def handle_get_hw_info(self, cmd, args):
@@ -133,7 +143,6 @@ class SliderDevice(asyncio.Protocol):
 
     def send_input_report(self, report):
         self.send_cmd(SliderCommand.input_report, report)
-        #self.ser.flush()
 
     def send_exception(self, code1):
         response = bytearray(2)
@@ -212,18 +221,18 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
     parsed_uri = urllib.parse.urlparse(uri)
     # tcp://127.0.0.1:12345 or tcp://[::1]:12345
     if parsed_uri.scheme == 'tcp':
-        await loop.create_connection(lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port)
+        return await loop.create_connection(lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port or 12345)
     # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
     elif parsed_uri.scheme == 'serial':
-        await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
+        return await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
     # rfcomm://[11:22:33:44:55:66]:0
     elif parsed_uri.scheme == 'rfcomm':
-        await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port)
+        return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port or 0)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(create_connection(loop, 'tcp://127.0.0.1:12345'))
+    loop.run_until_complete(create_connection(loop, 'tcp://127.0.0.1'))
     loop.run_forever()
     loop.close()
