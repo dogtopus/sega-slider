@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
+import typing as T
+
 import asyncio
 import io
-import serial
+import serial_asyncio
+import bluetooth
 import queue
 import enum
 import logging
 import struct
+import urllib.parse
 from collections import namedtuple
 
 from .helper import e0d0
@@ -93,9 +97,13 @@ class SliderDevice(asyncio.Protocol):
         for p in packets:
             self._stitch_and_dispatch(p)
 
-    def connection_lost(self, exc):
-        # TODO
-        pass
+    def connection_lost(self, exc: T.Optional[Exception]):
+        if exc is None:
+            self._logger.info('Connection closed')
+            # TODO notify app
+        else:
+            self._logger.error('Unexpected connection lost')
+            # TODO notify app
 
     def handle_led_report(self, cmd, args):
         self._logger.debug('new led report')
@@ -108,11 +116,11 @@ class SliderDevice(asyncio.Protocol):
 
     def handle_enable_slider_report(self, cmd, args):
         self._logger.info('Open sesame')
-        self.input_report_enable.set()
+        # TODO
 
     def handle_disable_slider_report(self, cmd, args):
         self._logger.info('Close sesame')
-        self.input_report_enable.clear()
+        # TODO
         self.send_cmd(SliderCommand.disable_slider_report)
 
     def handle_empty_response(self, cmd, args):
@@ -194,13 +202,28 @@ class SliderDevice(asyncio.Protocol):
             self.cksumctx_rx.reset()
 
 
-async def test_tcp(host, port):
-    loop = asyncio.get_running_loop()
-    server = await loop.create_server(lambda: SliderDevice('diva'), host, port)
-    async with server:
-        await server.serve_forever()
+async def create_rfcomm_connection(loop: asyncio.BaseEventLoop, protocol_factory: asyncio.Protocol, bdaddr: str, channel: int) -> T.Tuple[asyncio.Transport, asyncio.Protocol]:
+    sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+    sock.connect((bdaddr, channel))
+    return await loop.create_connection(protocol_factory, sock=sock)
+
+
+async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optional[str]='diva') -> T.Tuple[asyncio.Transport, SliderDevice]:
+    parsed_uri = urllib.parse.urlparse(uri)
+    # tcp://127.0.0.1:12345 or tcp://[::1]:12345
+    if parsed_uri.scheme == 'tcp':
+        await loop.create_connection(lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port)
+    # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
+    elif parsed_uri.scheme == 'serial':
+        await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
+    # rfcomm://[11:22:33:44:55:66]:0
+    elif parsed_uri.scheme == 'rfcomm':
+        await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    asyncio.run(test_tcp('127.0.0.1', 12345))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(create_connection(loop, 'tcp://127.0.0.1:12345'))
+    loop.run_forever()
+    loop.close()
