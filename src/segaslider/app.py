@@ -200,14 +200,14 @@ class SegaSliderApp(App):
         else:
             self._slider_protocol.on('connection_lost', self._on_connection_lost)
             self._slider_protocol.on('led', self._on_led)
+            self._slider_protocol.on('report', self._on_report_state_change)
             self._on_connection_made()
         
     def reset_protocol_handler(self):
         # Start the serial/frontend event handler
         if self.transport_available():
             self._slider_transport.close()
-            report_status = self.root.ids['top_hud_report_status']
-            report_status.report_enabled = False
+            self.report_enabled = False
         # okay nodejs code
         asyncio.create_task(self._reset_protocol_handler_coro())
 
@@ -230,6 +230,7 @@ class SegaSliderApp(App):
     def _on_connection_lost(self, exc):
         serial_status = self.root.ids['top_hud_serial_status']
         serial_status.serial_connected = False
+        self.report_enabled = False
 
     def _on_connection_made(self):
         serial_status = self.root.ids['top_hud_serial_status']
@@ -250,18 +251,19 @@ class SegaSliderApp(App):
                     index_brg = (index_rgb + 1) % 3
                     w.led_value[index_rgb] = math.pow((report['led_brg'][led_offset + index_brg] / 255) * brightness_factor, gamma)
 
-    def on_report_enabled(self, val):
+    def on_report_enabled(self, _inst, val):
+        # Update report status indicator
         hud = self.root.ids['top_hud_report_status']
         hud.report_enabled = val
 
     def _on_report_state_change(self, enabled):
+        # Callback on when report state changes
         self.report_enabled = enabled
 
     def on_tick(self, dt):
         if self.transport_available():
             slider_widget = self.root.ids['slider_root']
             electrode_layer = slider_widget.ids['electrodes']
-
             if self.report_enabled:
                 # populate the report
                 report = bytearray(slider_widget.electrodes)
