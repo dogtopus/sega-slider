@@ -1,9 +1,0 @@
-docutils
-pygments
-pypiwin32
-kivy_deps.sdl2
-kivy_deps.glew
-git+https://github.com/kivy/kivy.git
-pyserial
-pyserial-asyncio
-git+https://github.com/pybluez/pybluez.git
