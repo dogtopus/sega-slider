@@ -201,6 +201,7 @@ class SegaSliderApp(App):
             self._slider_protocol.on('connection_lost', self._on_connection_lost)
             self._slider_protocol.on('led', self._on_led)
             self._slider_protocol.on('report', self._on_report_state_change)
+            self._slider_protocol.on('reset', self._on_soft_reset)
             self._on_connection_made()
         
     def reset_protocol_handler(self):
@@ -235,6 +236,9 @@ class SegaSliderApp(App):
     def _on_connection_made(self):
         serial_status = self.root.ids['top_hud_serial_status']
         serial_status.serial_connected = True
+
+    def _on_soft_reset(self):
+        self.report_enabled = False
 
     def _on_led(self, report):
         slider_widget = self.root.ids['slider_root']
