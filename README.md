@@ -21,3 +21,27 @@ Currently 2 modes are supported.
 - chu: emulates the slider in Chunithm (837-15330)
 
 It is possible to override the layout and/or the reported model number in settings regardless of the modes selected but DO NOT use them unless you really know what you are doing.
+
+### Transport backends
+
+Currently SegaSlider supports 3 transport backends: TCP connection, serial (COM) and Bluetooth RFCOMM.
+
+#### TCP
+
+URI format: `tcp://<hostname>:<port>`
+
+The hostname can either be an IPv4/IPv6 address or a domain name.
+
+#### Serial
+
+URI format: `serial:COMx` (on Windows) or `serial:///dev/tty<S|USB|ACM>x` or `serial:/dev/tty<S|USB|ACM>x` (on Linux)
+
+The serial port will be configured as 115200 8n1 whenever possible.
+
+#### Bluetooth RFCOMM
+
+URI format: `rfcomm://<bdaddr>:<channel>`
+
+The BDADDR is in the format of `00-11-22-33-44-55` and the channel number is the PSM channel number.
+
+Currently there's no SDP resolution support. Therefore in the case when the PSM channel number is not static (e.g. Bluetooth COM port (Incoming) on Windows) it must be resolved manually by using e.g. `sdp-browse.py` included in pybluez.

@@ -7,8 +7,8 @@
         "type": "string",
         "section": "segaslider",
         "key": "port",
-        "title": "Port name",
-        "desc": "Serial port to use."
+        "title": "Slider host URI",
+        "desc": "URI that points to the host."
     },
     {
         "type": "title",
