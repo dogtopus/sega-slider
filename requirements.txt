@@ -1,4 +1,4 @@
 git+https://github.com/kivy/kivy.git
 pyserial
 pyserial-asyncio
-git+https://github.com/dogtopus/pybluez.git#mutable-buffer
+git+https://github.com/dogtopus/pybluez.git@local-fixes
