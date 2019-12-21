@@ -224,9 +224,9 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
     # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
     elif parsed_uri.scheme == 'serial':
         return await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
-    # rfcomm://[11:22:33:44:55:66]:0
+    # rfcomm://11-22-33-44-55-66:0
     elif parsed_uri.scheme == 'rfcomm':
-        return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname, parsed_uri.port or 0)
+        return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname.replace('-', ':'), parsed_uri.port or 0)
 
 
 if __name__ == '__main__':
