@@ -15,7 +15,6 @@ from collections import namedtuple
 
 from .helper import e0d0
 from .helper import checksum
-from sys import exc_info
 
 SliderHardwareInfo = namedtuple('SliderHardwareInfo',
                                 ('model', 'device_class', 'fw_type', 'unk_0xe', 'fw_ver', 'unk_0x10', 'unk_0x11',))
@@ -77,7 +76,7 @@ class SliderDevice(asyncio.Protocol):
             # input_report should be periodical input report only
             SliderCommand.led_report: self.handle_led_report,
             SliderCommand.enable_slider_report: self.handle_enable_slider_report,
-            SliderCommand.reset: self.handle_empty_response,
+            SliderCommand.reset: self.handle_reset,
             SliderCommand.get_hw_info: self.handle_get_hw_info,
         }
         if self._mode == 'chu':
