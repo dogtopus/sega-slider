@@ -200,7 +200,7 @@ class SegaSliderApp(App):
         else:
             self._slider_protocol.on('connection_lost', self._on_connection_lost)
             self._slider_protocol.on('led', self._on_led)
-            self._slider_protocol.on('report', self._on_report_state_change)
+            self._slider_protocol.on('report_state_change', self._on_report_state_change)
             self._slider_protocol.on('reset', self._on_soft_reset)
             self._on_connection_made()
         

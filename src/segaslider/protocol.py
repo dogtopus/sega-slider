@@ -74,6 +74,7 @@ class SliderDevice(asyncio.Protocol):
         self._callback = {}
         self._dispatch = {
             # input_report should be periodical input report only
+            SliderCommand.input_report: self.handle_input_report_one_shot,
             SliderCommand.led_report: self.handle_led_report,
             SliderCommand.enable_slider_report: self.handle_enable_slider_report,
             SliderCommand.reset: self.handle_reset,
@@ -115,6 +116,10 @@ class SliderDevice(asyncio.Protocol):
             # TODO notify app
         self._run_callback('connection_lost', exc=exc)
 
+    def handle_input_report_one_shot(self, cmd, args):
+        self._logger.debug('one-shot input report request')
+        self._run_callback('report_oneshot')
+
     def handle_led_report(self, cmd, args):
         self._logger.debug('new led report')
         # Copies the data to the queue
@@ -123,11 +128,11 @@ class SliderDevice(asyncio.Protocol):
 
     def handle_enable_slider_report(self, cmd, args):
         self._logger.info('Open sesame')
-        self._run_callback('report', enabled=True)
+        self._run_callback('report_state_change', enabled=True)
 
     def handle_disable_slider_report(self, cmd, args):
         self._logger.info('Close sesame')
-        self._run_callback('report', enabled=False)
+        self._run_callback('report_state_change', enabled=False)
         self.send_cmd(SliderCommand.disable_slider_report)
 
     def handle_reset(self, cmd, args):
