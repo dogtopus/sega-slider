@@ -283,15 +283,7 @@ class SegaSliderApp(App):
     def on_start(self):
         self.reset_protocol_handler()
         self.update_slider_layout()
-        try:
-            # Put other initialization code here
-            # TODO sync with framerate
-            Clock.schedule_interval(self.on_tick, 1/60)
-        except:
-            # Halt the thread in case something happens
-            Logger.exception('Exception occurred during startup. Notifying the protocol handler to quit.')
-            self.on_stop()
-            raise
+        Clock.schedule_interval(self.on_tick, 1/60)
 
     def on_stop(self):
         if self.transport_available():
@@ -301,4 +293,3 @@ class SegaSliderApp(App):
 
 if __name__ == '__main__':
     asyncio.run(SegaSliderApp().async_run('asyncio'))
-    #SegaSliderApp().run()
