@@ -200,6 +200,7 @@ class SegaSliderApp(App):
         else:
             self._slider_protocol.on('connection_lost', self._on_connection_lost)
             self._slider_protocol.on('led', self._on_led)
+            self._slider_protocol.on('report_oneshot', self._send_input_report)
             self._slider_protocol.on('report_state_change', self._on_report_state_change)
             self._slider_protocol.on('reset', self._on_soft_reset)
             self._on_connection_made()
@@ -264,7 +265,7 @@ class SegaSliderApp(App):
         # Callback on when report state changes
         self.report_enabled = enabled
 
-    def on_tick(self, dt):
+    def _send_input_report(self):
         if self.transport_available():
             slider_widget = self.root.ids['slider_root']
             electrode_layer = slider_widget.ids['electrodes']
@@ -275,6 +276,9 @@ class SegaSliderApp(App):
                     if isinstance(w, ElectrodeWidget) and len(report) >= w.electrode_index + 1:
                         report[w.electrode_index] = w.value
                 self._slider_protocol.send_input_report(report)
+
+    def on_tick(self, dt):
+        self._send_input_report()
 
     def on_start(self):
         self.reset_protocol_handler()
