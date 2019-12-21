@@ -2,10 +2,46 @@
 
 Crappy SEGA slider emulator.
 
+## Installation
+
+### Prerequisite
+
+- Tested on Windows and Linux
+- Python 3.7+
+- (Windows only) [MSVC Toolchain](https://visualstudio.microsoft.com/downloads/)
+- (Linux only) See [Here](https://kivy.org/doc/stable/installation/installation-devel.html#linux)
+
+### Windows
+
+1. Set the environment variables as per the [Kivy installation guide](https://kivy.org/doc/stable/installation/installation-windows.html#use-development-kivy)
+
+On cmd or bash, follow the step 4. On PowerShell, do
+
+```powershell
+$Env:USE_SDL2=1
+$Env:USE_GSTREAMER=1
+```
+
+2. Install everything listed in `requirements*.txt` in the following order:
+
+```powershell
+pip install -r requirements.pass1.txt
+pip install -r requirements.pass2.windows.txt
+pip install -r requirements.txt
+```
+
+### Linux
+
+1. Install everything listed in `requirements*.txt` in the following order:
+
+```sh
+pip install -r requirements.pass1.txt
+pip install -r requirements.txt
+```
+
 ## Usage
 
-1. Install dependencies listed in `requirements.txt` (`requirements.windows.txt` if on Windows)
-2. Run `python src/start.py`
+Run `python src/start.py`
 
 ### Connect with the game
 
