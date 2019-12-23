@@ -109,7 +109,7 @@ class SliderWidgetLayout(FloatLayout):
     def _update_electrodes(self):
         self.clear_widgets()
 
-        led_layer = BoxLayout(id='leds', orientation='horizontal', size=self.size, pos=self.pos)
+        led_layer = BoxLayout(orientation='horizontal', size=self.size, pos=self.pos)
         self.add_widget(led_layer)
         # Fix ids reference since kivy doesn't have built-in mechanics to do it
         self.ids['leds'] = weakref.proxy(led_layer)
@@ -117,7 +117,7 @@ class SliderWidgetLayout(FloatLayout):
         if self.slider_layout == 'diva':
             self.electrodes = 32
             self.leds = 32
-            electrode_layer = BoxLayout(id='electrodes', orientation='horizontal', size=self.size, pos=self.pos)
+            electrode_layer = BoxLayout(orientation='horizontal', size=self.size, pos=self.pos)
             for i in range(self.electrodes):
                 electrode_layer.add_widget(ElectrodeWidget(electrode_index=i, top_slider_object=self))
             for i in range(self.leds):
@@ -127,7 +127,7 @@ class SliderWidgetLayout(FloatLayout):
         elif self.slider_layout == 'chu':
             self.electrodes = 32
             self.leds = 31
-            electrode_layer = GridLayout(id='electrodes', rows=2)
+            electrode_layer = GridLayout(rows=2)
             for i in range(self.electrodes):
                 # Calculate the actual ID according to widget insertion sequence
                 r = i // 16
