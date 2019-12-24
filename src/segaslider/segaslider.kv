@@ -26,7 +26,7 @@
 BoxLayout:
     orientation: 'vertical'
     BoxLayout:
-    	orientation: 'horizontal'
+        orientation: 'horizontal'
         id: top_bar
         size_hint: (1, 0.1)
         size_hint_min_y: 50
@@ -38,25 +38,25 @@ BoxLayout:
                 points: self.x, self.y+2, self.x + self.width, self.y+2
                 width: 2.0
         Label:
-        	id: top_hud_serial_status
-        	markup: True
-        	serial_connected: False
-        	on_serial_connected: self.text = ' '.join(('Serial:', '[color=00ff00]Connected[/color]' if self.serial_connected else '[color=ff0000]Disconnected[/color]'))
-        	text: 'Serial: [color=ff0000]Disconnected[/color]'
+            id: top_hud_serial_status
+            markup: True
+            serial_connected: False
+            on_serial_connected: self.text = ' '.join(('Serial:', '[color=00ff00]Connected[/color]' if self.serial_connected else '[color=ff0000]Disconnected[/color]'))
+            text: 'Serial: [color=ff0000]Disconnected[/color]'
         Label:
-        	id: top_hud_report_status
-        	markup: True
-        	report_enabled: False
-        	on_report_enabled: self.text = ' '.join(('Report:', '[color=00ff00]Enabled[/color]' if self.report_enabled else '[color=ffff00]Disabled[/color]'))
-        	text: 'Report: [color=ffff00]Disabled[/color]'
+            id: top_hud_report_status
+            markup: True
+            report_enabled: False
+            on_report_enabled: self.text = ' '.join(('Report:', '[color=00ff00]Enabled[/color]' if self.report_enabled else '[color=ffff00]Disabled[/color]'))
+            text: 'Report: [color=ffff00]Disabled[/color]'
         Button:
-        	id: do_panic
-        	on_release: app.reset_protocol_handler()
-        	text: 'Panic'
+            id: do_panic
+            on_release: app.reset_protocol_handler()
+            text: 'Panic'
         Button:
-        	id: goto_settings
-        	on_release: app.open_settings()
-        	text: 'Settings'
+            id: goto_settings
+            on_release: app.open_settings()
+            text: 'Settings'
     SliderWidgetLayout:
         id: slider_root
         size_hint: (1, 0.8)
