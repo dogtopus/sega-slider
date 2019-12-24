@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from kivy import require as kvrequire
+from kivy.config import Config
 kvrequire('2.0.0')
 
 # Forward all log entries from logging to kivy logger.
@@ -184,6 +185,7 @@ class SegaSliderApp(App):
         kvres.resource_add_path(self.directory)
         self._slider_transport = None
         self._slider_protocol = None
+        self._fired = 0
 
     def build_config(self, config):
         super().build_config(config)
@@ -320,12 +322,20 @@ class SegaSliderApp(App):
                 self._slider_protocol.send_input_report(report)
 
     def on_tick(self, dt):
+        self._fired += 1
         self._send_input_report()
+
+    def print_fired(self, dt):
+        Logger.debug('InputReport: %d ticks/second', self._fired)
+        self._fired = 0
 
     def on_start(self):
         self.reset_protocol_handler()
         self.update_slider_layout()
-        Clock.schedule_interval(self.on_tick, 1/60)
+        # Changing FPS lock requires restart so no live update needed.
+        maxfps = Config.getint('graphics', 'maxfps')
+        Clock.schedule_interval(self.on_tick, 1/maxfps if maxfps > 0 else 0)
+        Clock.schedule_interval(self.print_fired, 1)
 
     def on_stop(self):
         if self.transport_available():
