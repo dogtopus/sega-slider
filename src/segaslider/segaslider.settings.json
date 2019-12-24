@@ -1,7 +1,7 @@
 [
     {
         "type": "title",
-        "title": "Serial port"
+        "title": "Connection"
     },
     {
         "type": "string",
@@ -12,7 +12,7 @@
     },
     {
         "type": "title",
-        "title": "Emulation"
+        "title": "Slider properties"
     },
     {
         "type": "options",
@@ -50,6 +50,22 @@
         ]
     },
     {
+        "type": "options",
+        "section": "segaslider",
+        "key": "diffuser",
+        "title": "Override LED diffuser",
+        "desc": "Whether or not to force the LED diffuser on/off. (default: auto)",
+        "options": [
+            "auto",
+            "force_on",
+            "force_off"
+        ]
+    },
+    {
+        "type": "title",
+        "title": "Input preprocessing"
+    },
+    {
         "type": "numeric",
         "section": "segaslider",
         "key": "x_overlap_mm",
@@ -64,10 +80,21 @@
         "desc": "Overlap between the collision box of nearby electrodes on vertical axis (in millimeters) (default: 6.0)"
     },
     {
+        "type": "title",
+        "title": "LED"
+    },
+    {
         "type": "numeric",
         "section": "segaslider",
         "key": "gamma",
         "title": "LED gamma",
         "desc": "Set gamma correction value for the emulated slider LED (gamma = 1.0: no correction; gamma > 1.0: darker than raw value; 0.0 < gamma < 1.0: brighter than raw value) (default: 0.5)"
+    },
+    {
+        "type": "numeric",
+        "section": "segaslider",
+        "key": "diffuser_width",
+        "title": "LED diffuser blur width",
+        "desc": "Set the width of the Gaussian blur LED diffuser (if applicable) (default: 16.0)"
     }
 ]

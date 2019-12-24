@@ -17,6 +17,7 @@ import asyncio
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.effectwidget import EffectWidget, HorizontalBlurEffect
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.clock import Clock
@@ -100,6 +101,7 @@ class SliderWidgetLayout(FloatLayout):
     slider_layout = kvprops.OptionProperty('diva', options=['diva', 'chu'])  # @UndefinedVariable
     x_overlap_mm = kvprops.NumericProperty(0.0)  # @UndefinedVariable
     y_overlap_mm = kvprops.NumericProperty(0.0)  # @UndefinedVariable
+    diffuser_width = kvprops.NumericProperty(16.0)  # @UndefinedVariable
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -109,10 +111,19 @@ class SliderWidgetLayout(FloatLayout):
     def _update_electrodes(self):
         self.clear_widgets()
 
+        # Create LED layout
         led_layer = BoxLayout(orientation='horizontal', size=self.size, pos=self.pos)
-        self.add_widget(led_layer)
+        # Create diffuser on top of LED layout
+        led_diffuser = EffectWidget()
+        led_diffuser.effects = []
+        if self.diffuser_width >= 0:
+            led_diffuser.effects.append(HorizontalBlurEffect(size=self.diffuser_width))
+        led_diffuser.add_widget(led_layer)
+        self.add_widget(led_diffuser)
+
         # Fix ids reference since kivy doesn't have built-in mechanics to do it
-        self.ids['leds'] = weakref.proxy(led_layer)
+        self.ids['led_diffuser'] = weakref.proxy(led_diffuser)
+        led_diffuser.ids['leds'] = weakref.proxy(led_layer)
 
         if self.slider_layout == 'diva':
             self.electrodes = 32
@@ -147,6 +158,8 @@ class SliderWidgetLayout(FloatLayout):
     def on_slider_layout(self, obj, value):
         self._update_electrodes()
 
+    def on_diffuser_width(self, obj, value):
+        self._update_electrodes()
 
 class SegaSliderApp(App):
     report_enabled = kvprops.BooleanProperty(False)  # @UndefinedVariable
@@ -164,9 +177,11 @@ class SegaSliderApp(App):
             mode='diva',
             layout='auto',
             hwinfo='auto',
+            diffuser='auto',
             x_overlap_mm=6.0,
             y_overlap_mm=6.0,
             gamma=0.5,
+            diffuser_width=16.0,
         ))
 
     def build_settings(self, settings):
@@ -188,6 +203,9 @@ class SegaSliderApp(App):
             if key in ('x_overlap_mm', 'y_overlap_mm'):
                 Logger.info('Overlap settings changed.')
                 self.sync_electrode_overlap()
+            if key in ('diffuser_width', 'diffuser'):
+                Logger.info('Diffuser settings changed.')
+                self.sync_diffuser_settings()
 
     async def _reset_protocol_handler_coro(self):
         default_mode = self.config.get('segaslider', 'mode')
@@ -223,11 +241,20 @@ class SegaSliderApp(App):
         mode = default_mode if potential_override == 'auto' else potential_override
         slider_widget.slider_layout = mode
         self.sync_electrode_overlap()
+        self.sync_diffuser_settings()
 
     def sync_electrode_overlap(self):
         slider_widget = self.root.ids['slider_root']
         slider_widget.x_overlap_mm = self.config.getfloat('segaslider', 'x_overlap_mm')
         slider_widget.y_overlap_mm = self.config.getfloat('segaslider', 'y_overlap_mm')
+
+    def sync_diffuser_settings(self):
+        slider_widget = self.root.ids['slider_root']
+        diffuser = self.config.get('segaslider', 'diffuser')
+        if (diffuser == 'auto' and slider_widget.slider_layout == 'diva') or diffuser == 'force_on':
+            slider_widget.diffuser_width = self.config.getfloat('segaslider', 'diffuser_width')
+        else:
+            slider_widget.diffuser_width = -1.0
 
     def _on_connection_lost(self, exc):
         serial_status = self.root.ids['top_hud_serial_status']
@@ -243,7 +270,7 @@ class SegaSliderApp(App):
 
     def _on_led(self, report):
         slider_widget = self.root.ids['slider_root']
-        led_layer = slider_widget.ids['leds']
+        led_layer = slider_widget.ids['led_diffuser'].ids['leds']
         gamma = self.config.getfloat('segaslider', 'gamma')
         # Clamp the brightness factor to 1
         brightness_factor = min((report['brightness'] / 63), 1.0)
