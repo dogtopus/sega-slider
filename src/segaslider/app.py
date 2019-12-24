@@ -161,6 +161,21 @@ class SliderWidgetLayout(FloatLayout):
     def on_diffuser_width(self, obj, value):
         self._update_electrodes()
 
+    def on_touch_down(self, touch):
+        touch.ud['prev_pos'] = touch.pos
+        super().on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        touch.ud['prev_pos'] = None
+        super().on_touch_up(touch)
+
+    def on_touch_move(self, touch):
+        if touch.pos == touch.ud['prev_pos']:
+            return True
+        else:
+            touch.ud['prev_pos'] = touch.pos
+            super().on_touch_move(touch)
+
 class SegaSliderApp(App):
     report_enabled = kvprops.BooleanProperty(False)  # @UndefinedVariable
 
