@@ -177,6 +177,7 @@ class SegaSliderApp(App):
         self._slider_transport = None
         self._slider_protocol = None
         self._fired = 0
+        self._led_updates = 0
 
     def build_config(self, config):
         super().build_config(config)
@@ -277,6 +278,7 @@ class SegaSliderApp(App):
         self.report_enabled = False
 
     def _on_led(self, report):
+        self._led_updates += 1
         slider_widget = self.root.ids['slider_root']
         led_layer = slider_widget.ids['led_diffuser'].ids['leds']
         gamma = self.config.getfloat('segaslider', 'gamma')
@@ -317,8 +319,9 @@ class SegaSliderApp(App):
         self._send_input_report()
 
     def print_fired(self, dt):
-        Logger.debug('InputReport: %f ticks/second', self._fired/dt)
+        Logger.debug('Stats: Input %f ticks/s, LED %f updates/s', self._fired/dt, self._led_updates/dt)
         self._fired = 0
+        self._led_updates = 0
 
     def on_start(self):
         self.reset_protocol_handler()
