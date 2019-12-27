@@ -40,22 +40,27 @@ HW_INFO = dict(
     )),
 )
 
-TRACE = 9
-_Logger = logging.getLoggerClass()
-if not (hasattr(logging, 'TRACE') or hasattr(_Logger, 'trace')):
-    # Kivy-style logger
-    class KivyStyleLogger(_Logger):
-        def __init__(self, name, level=logging.NOTSET):
-            super().__init__(name, level)
 
-        def debug(self, msg, *args, **kwargs):
-            if self.isEnabledFor(TRACE):
-                self._log(TRACE, msg, args, **kwargs)
-
-
+if not hasattr(logging, 'TRACE'):
+    TRACE = 9
     logging.addLevelName(TRACE, 'TRACE')
     logging.TRACE = TRACE
-    logging.setLoggerClass(KivyStyleLogger)
+else:
+    TRACE = logging.TRACE
+
+
+_Logger = logging.getLoggerClass()
+# Kivy-style logger
+class KivyStyleLogger(_Logger):
+    def __init__(self, name, level=logging.NOTSET):
+        super().__init__(name, level)
+
+    def trace(self, msg, *args, **kwargs):
+        if self.isEnabledFor(TRACE):
+            self._log(TRACE, msg, args, **kwargs)
+
+
+logging.setLoggerClass(KivyStyleLogger)
 
 
 class SliderCommand(enum.IntEnum):
@@ -218,8 +223,8 @@ class SliderDevice(asyncio.Protocol):
                     self._dispatch[cmd](cmd, args)
                 else:
                     self._logger.warning('Unknown cmd 0x%02x args %s', cmd, repr(bytes(args)))
-            # manually free the memoryviews
-            del args
+                    # manually free the memoryviews
+                del args
             del stitched
 
             # cleanup
