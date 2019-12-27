@@ -317,7 +317,7 @@ class SegaSliderApp(App):
         self._send_input_report()
 
     def print_fired(self, dt):
-        Logger.debug('InputReport: %d ticks/second', self._fired)
+        Logger.debug('InputReport: %f ticks/second', self._fired/dt)
         self._fired = 0
 
     def on_start(self):

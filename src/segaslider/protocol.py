@@ -40,6 +40,23 @@ HW_INFO = dict(
     )),
 )
 
+TRACE = 9
+_Logger = logging.getLoggerClass()
+if not (hasattr(logging, 'TRACE') or hasattr(_Logger, 'trace')):
+    # Kivy-style logger
+    class KivyStyleLogger(_Logger):
+        def __init__(self, name, level=logging.NOTSET):
+            super().__init__(name, level)
+
+        def debug(self, msg, *args, **kwargs):
+            if self.isEnabledFor(TRACE):
+                self._log(TRACE, msg, args, **kwargs)
+
+
+    logging.addLevelName(TRACE, 'TRACE')
+    logging.TRACE = TRACE
+    logging.setLoggerClass(KivyStyleLogger)
+
 
 class SliderCommand(enum.IntEnum):
     input_report = 0x01
@@ -65,6 +82,7 @@ class SliderDevice(asyncio.Protocol):
             raise ValueError(f'Unsupported mode {mode}')
         self._transport = None
         self._logger = logging.getLogger('SliderDevice')
+        self._logger.debug('Protocol handler created')
         self._mode = mode
         self._e0d0ctx = e0d0.E0D0Context(sync=0xff, esc=0xfd)
         self._cksumctx_rx = checksum.NegativeJVSChecksum(init=-0xff)
@@ -111,26 +129,26 @@ class SliderDevice(asyncio.Protocol):
         self._run_callback('connection_lost', exc=exc)
 
     def _handle_input_report_one_shot(self, cmd, args):
-        self._logger.debug('one-shot input report request')
+        self._logger.trace('One-shot input report request')
         self._run_callback('report_oneshot')
 
     def _handle_led_report(self, cmd, args):
-        self._logger.debug('new led report')
+        self._logger.trace('New led report')
         # Copies the data to the queue
         report = dict(brightness=args[0], led_brg=bytes(args[1:]))
         self._run_callback('led', report=report)
 
     def _handle_enable_slider_report(self, cmd, args):
-        self._logger.info('Open sesame')
+        self._logger.debug('Open sesame')
         self._run_callback('report_state_change', enabled=True)
 
     def _handle_disable_slider_report(self, cmd, args):
-        self._logger.info('Close sesame')
+        self._logger.debug('Close sesame')
         self._run_callback('report_state_change', enabled=False)
         self.send_cmd(SliderCommand.disable_slider_report)
 
     def _handle_reset(self, cmd, args):
-        self._logger.info('Reset')
+        self._logger.debug('Reset')
         self._run_callback('reset')
         self.send_cmd(cmd)
 
@@ -138,6 +156,7 @@ class SliderDevice(asyncio.Protocol):
         self.send_cmd(cmd)
 
     def _handle_get_hw_info(self, cmd, args):
+        self._logger.debug('get hardware info')
         self.send_cmd(cmd, HW_INFO[self._mode])
 
     def send_input_report(self, report):
@@ -162,7 +181,7 @@ class SliderDevice(asyncio.Protocol):
             buf.write(self._e0d0ctx.encode(args))
             self._cksumctx_tx.update(args)
         buf.write(self._e0d0ctx.finalize(self._cksumctx_tx.getvalue().to_bytes(1, 'big')))
-        self._logger.debug('Reply: %s', repr(buf.getvalue()))
+        self._logger.trace('Reply: %s', repr(buf.getvalue()))
         # TODO: possible error handling
         self._transport.write(buf.getbuffer())
 
@@ -181,21 +200,21 @@ class SliderDevice(asyncio.Protocol):
         argc = self._partial_packets.getbuffer()[1]
         packet_len = argc + 3
 
-        assert packet_len >= self._partial_packets.tell(), 'stitched packet is larger than expected'
+        assert packet_len >= self._partial_packets.tell(), 'Stitched packet is larger than expected'
 
         if packet_len == self._partial_packets.tell():
             stitched = self._partial_packets.getbuffer()
             assert packet_len == len(stitched)
             if self._cksumctx_rx.getvalue() != 0:
                 # Warn, discard packet and return
-                self._logger.error('bad checksum (expecting 0x%02x, got 0x%02x)', stitched[-1], (self._cksumctx_rx.getvalue() + stitched[-1]) & 0xff)
+                self._logger.error('Bad checksum (expecting 0x%02x, got 0x%02x)', stitched[-1], (self._cksumctx_rx.getvalue() + stitched[-1]) & 0xff)
                 self.send_exception(ExceptionCode1.wrong_checksum)
             else:
                 # Proceed to dispatch
                 cmd = stitched[0]
                 args = stitched[2:-1]
                 if cmd in self._dispatch:
-                    self._logger.debug('cmd 0x%02x args %s', cmd, repr(bytes(args)))
+                    self._logger.trace('cmd 0x%02x args %s', cmd, repr(bytes(args)))
                     self._dispatch[cmd](cmd, args)
                 else:
                     self._logger.warning('Unknown cmd 0x%02x args %s', cmd, repr(bytes(args)))
