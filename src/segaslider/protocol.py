@@ -253,11 +253,9 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
     # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
     elif parsed_uri.scheme == 'serial':
         return await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
-    # rfcomm://11-22-33-44-55-66:0 or rfcomm://11-22-33-44-55-66/sdp?[name=<name>][&uuid=<uuid>]
+    # rfcomm://11-22-33-44-55-66:1 or rfcomm://11-22-33-44-55-66/sdp?[name=<name>][&uuid=<uuid>]
     elif parsed_uri.scheme == 'rfcomm':
-        if parsed_uri.port is not None:
-            return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname.replace('-', ':'), parsed_uri.port or 0)
-        elif parsed_uri.path == '/sdp':
+        if parsed_uri.path == '/sdp':
             bdaddr = parsed_uri.hostname.replace('-', ':')
             channel = None
             params = urllib.parse.parse_qs(parsed_uri.query)
@@ -280,8 +278,10 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
                 raise ValueError('No matching service found')
             else:
                 return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), bdaddr, channel)
-        else:
+        elif parsed_uri.path != '/' and parsed_uri.path != '':
             raise ValueError('Unsupported URI {}'.format(uri))
+        else:
+            return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname.replace('-', ':'), parsed_uri.port or 1)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
