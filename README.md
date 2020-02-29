@@ -80,4 +80,8 @@ URI format: `rfcomm://<bdaddr>:<channel>`
 
 The BDADDR is in the format of `00-11-22-33-44-55` and the channel number is the PSM channel number.
 
-Currently there's no SDP resolution support. Therefore in the case when the PSM channel number is not static (e.g. Bluetooth COM port (Incoming) on Windows) it must be resolved manually by using e.g. `sdp-browse.py` included in pybluez.
+#### Bluetooth RFCOMM (SDP)
+
+URI format: `rfcomm://<bdaddr>/sdp?name=[name]&uuid=[uuid]`
+
+The BDADDR format is the same as Bluetooth RFCOMM URI. The two optional query parameters, `name` and `uuid`, are used to select the desired service announced via SDP, by service name and UUID respectively. The first serial port class service that matches the specified criteria will be used by the program.

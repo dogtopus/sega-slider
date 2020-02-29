@@ -63,6 +63,10 @@ class KivyStyleLogger(_Logger):
 logging.setLoggerClass(KivyStyleLogger)
 
 
+# Module level logger
+_logger = logging.getLogger('protocol')
+
+
 class SliderCommand(enum.IntEnum):
     input_report = 0x01
     led_report = 0x02
@@ -235,6 +239,7 @@ class SliderDevice(asyncio.Protocol):
 
 
 async def create_rfcomm_connection(loop: asyncio.BaseEventLoop, protocol_factory: asyncio.Protocol, bdaddr: str, channel: int) -> T.Tuple[asyncio.Transport, asyncio.Protocol]:
+    _logger.debug('RFCOMM: Connecting to device %s channel %d', bdaddr, channel)
     sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     sock.connect((bdaddr, channel))
     return await loop.create_connection(protocol_factory, sock=sock)
@@ -248,10 +253,35 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
     # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
     elif parsed_uri.scheme == 'serial':
         return await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
-    # rfcomm://11-22-33-44-55-66:0
+    # rfcomm://11-22-33-44-55-66:0 or rfcomm://11-22-33-44-55-66/sdp?[name=<name>][&uuid=<uuid>]
     elif parsed_uri.scheme == 'rfcomm':
-        return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname.replace('-', ':'), parsed_uri.port or 0)
+        if parsed_uri.port is not None:
+            return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), parsed_uri.hostname.replace('-', ':'), parsed_uri.port or 0)
+        elif parsed_uri.path == '/sdp':
+            bdaddr = parsed_uri.hostname.replace('-', ':')
+            channel = None
+            params = urllib.parse.parse_qs(parsed_uri.query)
+            _logger.debug('SDP: Resolving service on %s', bdaddr)
 
+            filter_ = {}
+            if 'name' in params:
+                filter_['name'] = params['name'][0]
+            if 'uuid' in params:
+                filter_['uuid'] = params['uuid'][0]
+            services = bluetooth.find_service(address=bdaddr, **filter_)
+
+            for svc in services:
+                # TODO match classes?
+                if bluetooth.SERIAL_PORT_CLASS in svc['service-classes']:
+                    _logger.debug('SDP: Found service "%s" on channel %d', svc['name'], svc['port'])
+                    channel = svc['port']
+                    break
+            if channel is None:
+                raise ValueError('No matching service found')
+            else:
+                return await create_rfcomm_connection(loop, lambda: SliderDevice(mode), bdaddr, channel)
+        else:
+            raise ValueError('Unsupported URI {}'.format(uri))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
