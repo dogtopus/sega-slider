@@ -8,6 +8,7 @@ kivy = {extras = ["base"], version = "*"}
 pyserial = "*"
 pyserial-asyncio = "*"
 pybluez = {git = "https://github.com/pybluez/pybluez.git"}
+"kivy-deps.sdl2" = {markers = "platform_system == 'Windows'",version = "*"}
 
 [dev-packages]
 
