@@ -67,6 +67,8 @@ URI format: `rfcomm://<bdaddr>:<channel>`
 
 The BDADDR is in the format of `00-11-22-33-44-55` and the channel number is the PSM channel number.
 
+Alternatively, the BDADDR can be specified as an [RFC7668 IPv6 link-local address](https://tools.ietf.org/html/rfc7668#section-3.2.2) in the form of `[fe80::0011:22ff:fe33:4455]`.
+
 #### Bluetooth RFCOMM (SDP)
 
 URI format: `rfcomm://<bdaddr>/sdp?name=[name]&uuid=[uuid]`

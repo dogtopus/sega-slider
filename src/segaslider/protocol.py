@@ -7,7 +7,10 @@ import io
 import serial_asyncio
 import bluetooth
 import enum
+import ipaddress
+import itertools
 import logging
+import re
 import struct
 import urllib.parse
 from collections import namedtuple
@@ -39,6 +42,9 @@ HW_INFO = dict(
         unk_0x11=0x64
     )),
 )
+
+
+RFCOMM_URLSAFE_BDADDR = re.compile(r'^[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}-[A-Fa-f0-9]{2}$')
 
 
 if not hasattr(logging, 'TRACE'):
@@ -253,10 +259,20 @@ async def create_connection(loop: asyncio.BaseEventLoop, uri: str, mode: T.Optio
     # serial:COM0 or serial:///dev/ttyUSB0 or serial:/dev/ttyUSB0
     elif parsed_uri.scheme == 'serial':
         return await serial_asyncio.create_serial_connection(loop, lambda: SliderDevice(mode), parsed_uri.path, baudrate=115200)
-    # rfcomm://11-22-33-44-55-66:1 or rfcomm://11-22-33-44-55-66/sdp?[name=<name>][&uuid=<uuid>]
+    # rfcomm://11-22-33-44-55-66:1 or rfcomm://11-22-33-44-55-66/sdp?[name=<name>][&uuid=<uuid>] or
+    # rfcomm://[fe80::1122:33ff:fe44:5566]:1 or rfcomm://[fe80::1122:33ff:fe44:5566]/sdp?[name=<name>][&uuid=<uuid>]
     elif parsed_uri.scheme == 'rfcomm':
         if parsed_uri.path == '/sdp':
-            bdaddr = parsed_uri.hostname.replace('-', ':')
+            if RFCOMM_URLSAFE_BDADDR.match(parsed_uri.hostname):
+                bdaddr = parsed_uri.hostname.replace('-', ':')
+            else:
+                sixln_ipv6_addr = ipaddress.IPv6Address(parsed_uri.hostname)
+                if not sixln_ipv6_addr.is_link_local:
+                    raise ipaddress.AddressValueError('6LN IPv6 address must be a link-local address.')
+                if sixln_ipv6_addr.packed[11:13] != b'\xff\xfe':
+                    raise ipaddress.AddressValueError('Invalid IID for 6LN IPv6 link-local address.')
+                bdaddr = ':'.join(f'{b:02x}' for b in itertools.chain(sixln_ipv6_addr.packed[8:11], sixln_ipv6_addr.packed[13:16]))
+
             channel = None
             params = urllib.parse.parse_qs(parsed_uri.query)
             _logger.debug('SDP: Resolving service on %s', bdaddr)
