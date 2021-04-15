@@ -12,6 +12,12 @@ pybluez = {git = "https://github.com/pybluez/pybluez.git"}
 pywin32 = {markers = "platform_system == 'Windows'",version = "*"}
 
 [dev-packages]
+pyinstaller = {ref = "develop", git = "https://github.com/pyinstaller/pyinstaller.git"}
 
 [requires]
 python_version = "3.9"
+
+[scripts]
+start = "python src/start.py"
+build = "pyinstaller sega-slider.spec"
+"build-onefile" = "pyinstaller sega-slider-onefile.spec"

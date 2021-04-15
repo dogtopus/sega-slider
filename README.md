@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run `python src/start.py` (or `pipenv run python src/start.py` if using Pipenv)
+Run `python src/start.py` (or `pipenv run start` if using Pipenv)
 
 ### Connect with the game
 

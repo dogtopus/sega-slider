@@ -110,6 +110,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# Whitelist manually patched sega-slider spec files.
+!sega-slider.spec
+!sega-slider-onefile.spec
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

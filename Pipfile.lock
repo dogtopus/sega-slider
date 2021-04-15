@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "980b08f506d952230f7800342f17ec33044b67e2d7cb3bbce8e11e5c931efbd4"
+            "sha256": "68b12e79fead4c74d2a1bcd245b574bb260cc14095656824680bf2c8a3c53c80"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -71,22 +71,12 @@
             "version": "==2.0.0"
         },
         "kivy-deps.sdl2": {
-            "hashes": [
-                "sha256:3e37948c010681e3f58c408940e62106226a2b1e5a2bf7764469cfd683025698",
-                "sha256:4a5550410e2649b72984d294fb45564bc8d76fc0bef009406d8cb328d994855c",
-                "sha256:50726d6aeba460be1a9bd944ff0e763e58e122ef04b82ccbd03947ae7585cde4",
-                "sha256:549e6423f55216bc761a11ec91508eb6fe836ffb984c7a3c7a58b7543d8f8f77",
-                "sha256:560de04f15f59e8e94955442b72d1a1164989d3d502b5a9d132437a4c229e52f",
-                "sha256:984e7fa9e1fe06fd902bb745e986300b65e00ba0eb4ecfe278f52a1915370cd0",
-                "sha256:a7cee2215eb428b0be34c1da0fad806036b1382804c0e4ef62b19b11320c8462",
-                "sha256:e9ad50f2f469c8bd92720f547ab722cc36ef13c1a25ef78154b6ab90d48bd960"
-            ],
-            "index": "pypi",
             "markers": "platform_system == 'Windows'",
-            "version": "==0.3.1"
+            "version": "*"
         },
         "kivy-garden": {
             "hashes": [
+                "sha256:9b7d9de5efacbcd0c4b3dd873b30622a86093c9965aa47b523c7a32f3eb34610",
                 "sha256:c256f42788421273a08fbb0a228f0fb0e80dd86b629fb8c0920507f645be6c72"
             ],
             "version": "==0.1.4"
@@ -189,5 +179,24 @@
             "version": "==1.26.4"
         }
     },
-    "develop": {}
+    "develop": {
+        "altgraph": {
+            "hashes": [
+                "sha256:1f05a47122542f97028caf78775a095fbe6a2699b5089de8477eb583167d69aa",
+                "sha256:c623e5f3408ca61d4016f23a681b9adb100802ca3e3da5e718915a9e4052cebe"
+            ],
+            "version": "==0.17"
+        },
+        "pyinstaller": {
+            "git": "https://github.com/pyinstaller/pyinstaller.git",
+            "ref": "577e755b7db5e4bd156477e0848fb63e931c253f"
+        },
+        "pyinstaller-hooks-contrib": {
+            "hashes": [
+                "sha256:27558072021857d89524c42136feaa2ffe4f003f1bdf0278f9b24f6902c1759c",
+                "sha256:892310e6363655838485ee748bf1c5e5cade7963686d9af8650ee218a3e0b031"
+            ],
+            "version": "==2021.1"
+        }
+    }
 }
