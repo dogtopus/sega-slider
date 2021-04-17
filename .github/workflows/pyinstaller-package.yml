@@ -10,7 +10,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build-windows:
 
     runs-on: windows-latest
 
@@ -31,6 +31,8 @@ jobs:
       run: pipenv install --dev
 
     - name: Package application
+      env: 
+        KIVY_GL_BACKEND: angle_sdl2
       run: pipenv run build-onefile
 
     - name: Upload artifacts
