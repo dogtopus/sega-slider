@@ -20,12 +20,6 @@ Crappy SEGA slider emulator.
 pipenv install
 ```
 
-### requirements.txt
-
-```
-pip install -r requirements.txt
-```
-
 ## Usage
 
 Run `python src/start.py` (or `pipenv run start` if using Pipenv)
