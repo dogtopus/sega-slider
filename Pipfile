@@ -13,6 +13,9 @@ pywin32 = {markers = "platform_system == 'Windows'",version = "*"}
 
 [dev-packages]
 pyinstaller = {ref = "develop", git = "https://github.com/pyinstaller/pyinstaller.git"}
+altgraph = "*"
+pywin32-ctypes = {markers = "platform_system == 'Windows'",version = "*"}
+pefile = {markers = "platform_system == 'Windows'",version = "*"}
 
 [requires]
 python_version = "3.9"

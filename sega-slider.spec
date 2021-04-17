@@ -1,5 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
+import platform
+import itertools
 
+if platform.system() == 'Windows':
+    from kivy_deps import sdl2, glew, angle
+    platform_deps = tuple(Tree(p) for p in itertools.chain(sdl2.dep_bins, glew.dep_bins, angle.dep_bins))
+else:
+    platform_deps = tuple()
 
 block_cipher = None
 
@@ -34,6 +41,7 @@ coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
                a.datas,
+               *platform_deps,
                strip=False,
                upx=True,
                upx_exclude=[],
