@@ -38,5 +38,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: build
+        name: sega-slider-windows-amd64
         path: dist/*
