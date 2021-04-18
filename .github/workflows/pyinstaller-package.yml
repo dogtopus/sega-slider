@@ -10,14 +10,14 @@ on:
     branches: [ master ]
 
 jobs:
-  build-windows:
+  build-windows-amd64:
 
     runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.9 amd64
       uses: actions/setup-python@v2
       with:
         python-version: 3.9
@@ -39,4 +39,37 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: sega-slider-windows-amd64
+        path: dist/*
+
+
+  build-windows-x86:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.9 x86
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+        architecture: x86
+
+    - name: Install pipenv
+      run: |
+        python -m pip install --upgrade pip
+        pip install pipenv
+
+    - name: Install dependencies
+      run: pipenv install --dev
+
+    - name: Package application
+      env: 
+        KIVY_GL_BACKEND: angle_sdl2
+      run: pipenv run build-onefile
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: sega-slider-windows-x86
         path: dist/*
