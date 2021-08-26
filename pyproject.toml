@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "sega-slider"
+version = "1.0.0"
+description = "Crappy SEGA slider emulator."
+authors = ["dogtopus <dogtopus@users.noreply.github.com>"]
+license = "GPLv3+"
+packages = [
+    {include = "segaslider", from = "src"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Kivy = "^2.0.0"
+pyserial = "^3.5"
+pyserial-asyncio = "^0.5"
+pybluez = {git = "https://github.com/pybluez/pybluez.git"}
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^4.5.1"
+
+[tool.poetry.scripts]
+start = "poetry_scripts:start"
+build = "poetry_scripts:build"
+build-onefile = "poetry_scripts:build_onefile"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
