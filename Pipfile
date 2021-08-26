@@ -8,8 +8,12 @@ kivy = {extras = ["base"], version = "*"}
 pyserial = "*"
 pyserial-asyncio = "*"
 pybluez = {git = "https://github.com/pybluez/pybluez.git"}
+"kivy-deps.angle" = {markers = "platform_system == 'Windows'",version = "*"}
+"kivy-deps.glew" = {markers = "platform_system == 'Windows'",version = "*"}
 "kivy-deps.sdl2" = {markers = "platform_system == 'Windows'",version = "*"}
 pywin32 = {markers = "platform_system == 'Windows'",version = "*"}
+pypiwin32 = {markers = "platform_system == 'Windows'",version = "*"}
+
 
 [dev-packages]
 pyinstaller = {ref = "develop", git = "https://github.com/pyinstaller/pyinstaller.git"}
