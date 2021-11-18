@@ -22,18 +22,18 @@ jobs:
       with:
         python-version: 3.9
 
-    - name: Install pipenv
+    - name: Install poetry
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv
+        pip install poetry
 
     - name: Install dependencies
-      run: pipenv install --dev
+      run: poetry install
 
     - name: Package application
       env: 
         KIVY_GL_BACKEND: angle_sdl2
-      run: pipenv run build-onefile
+      run: poetry run build-onefile
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
@@ -55,18 +55,18 @@ jobs:
         python-version: 3.9
         architecture: x86
 
-    - name: Install pipenv
+    - name: Install poetry
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv
+        pip install poetry
 
     - name: Install dependencies
-      run: pipenv install --dev
+      run: poetry install --dev
 
     - name: Package application
       env: 
         KIVY_GL_BACKEND: angle_sdl2
-      run: pipenv run build-onefile
+      run: poetry run build-onefile
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
